@@ -64,13 +64,12 @@ ui <- fluidPage(
       p(
         style = "font-size: 0.85em;",
         "Created by ",
-        a("Brad Kennedy", href = "mailto:bradley.kennedy100@rafac.mod.gov.uk", target =
+        a("Flt Lt B Kennedy", href = "mailto:bradley.kennedy100@rafac.mod.gov.uk", target =
             "_blank"),
-        "for ",
-        a("632 VGS", href = "https://632vgs.co.uk", target = "_blank"),
+        "for 2 FTS",
         br(),
         br(),
-        a("Source Code", href = "https://github.com/b-kennedy0/632vgs/blob/master/app.R/", target =
+        a("Source Code", href = "https://github.com/b-kennedy0/2FTS-BallastWeight", target =
             "_blank"),
         "|" ,
         a("Add new aircraft", href = "https://docs.google.com/forms/d/e/1FAIpQLSdZUL2xQoC6--gYshqy-mRN6uogpsxnZMvVtqh0qOgCmbNavg/viewform?usp=sf_link", target = "_blank")
