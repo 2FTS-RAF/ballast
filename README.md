@@ -1,2 +1,2 @@
-# 632vgs
-Repository for 632VGS Weight App
+# 2FTS Ballast Weight App
+Source code for the application
