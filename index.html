@@ -15,6 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="Ballast App" />
     <link rel="manifest" href="www/site.webmanifest" />
     <link rel="stylesheet" href="assets/styles.css">
+    <script defer src="assets/layout.js"></script>
     <script defer src="assets/vendor/jspdf.umd.min.js"></script>
     <script defer src="assets/vendor/jspdf.plugin.autotable.min.js"></script>
     <script defer src="assets/app.js"></script>
@@ -280,22 +281,7 @@
         </section>
       </main>
 
-      <footer class="footer">
-        <p class="footer__credit">
-          &copy; 2026 Bradley Kennedy. 
-          <a
-            href="https://github.com/b-kennedy0/2FTS-BallastWeight/blob/master/LICENSE"
-            target="_blank"
-            rel="noreferrer"
-          >
-            MIT License
-          </a>.
-        </p>
-        <div class="footer__links">
-          <a href="help.html">Help</a>
-          <a href="https://github.com/b-kennedy0/2FTS-BallastWeight" target="_blank" rel="noreferrer">Source</a>
-        </div>
-      </footer>
+      <footer class="footer" data-shared-footer data-footer-src="partials/footer.html"></footer>
     </div>
   </body>
 </html>
