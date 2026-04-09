@@ -4,7 +4,7 @@ The 2FTS Ballast Weight App is a browser-based planning and calculation aid for 
 
 Live app: [https://2fts-raf.github.io/ballast](https://2fts-raf.github.io/ballast)
 
-Source repository: [https://github.com/b-kennedy0/2FTS-BallastWeight](https://github.com/b-kennedy0/2FTS-BallastWeight)
+Source repository: [https://github.com/2FTS-RAF/ballast](https://github.com/2FTS-RAF/ballast)
 
 ## What the App Does
 
@@ -77,7 +77,7 @@ Aircraft records are stored in `assets/aircraft_weights.csv`.
 
 New aircraft entries or updates are intended to be submitted through the repository's GitHub Issue Form:
 
-- Issue form: [Add aircraft](https://github.com/b-kennedy0/2FTS-BallastWeight/issues/new?template=add-aircraft.yml)
+- Issue form: [Add aircraft](https://github.com/2FTS-RAF/ballast/issues/new?template=add-aircraft.yml)
 - You provide the aircraft tail number and aircraft weight in kilograms.
 - A GitHub Actions workflow processes the submission.
 - If a change is required, the automation opens a pull request to update `assets/aircraft_weights.csv`.
@@ -87,7 +87,7 @@ New aircraft entries or updates are intended to be submitted through the reposit
 
 The repository currently uses a structured issue process rather than open blank issues.
 
-- For aircraft data additions or corrections, use the [Add aircraft issue form](https://github.com/b-kennedy0/2FTS-BallastWeight/issues/new?template=add-aircraft.yml).
+- For aircraft data additions or corrections, use the [Add aircraft issue form](https://github.com/2FTS-RAF/ballast/issues/new?template=add-aircraft.yml).
 - Check the tail number and weight carefully before submitting.
 - If the workflow cannot process the submission automatically, GitHub will comment on the issue with the reason.
 - For questions, feedback, or matters that are not aircraft data submissions, use the developer contact route below.
