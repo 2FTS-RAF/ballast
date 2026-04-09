@@ -4,6 +4,11 @@ Static GitHub Pages version of the ballast weight calculator lives in `index.htm
 
 Aircraft data is served from `assets/aircraft_weights.csv`. New aircraft submissions are intended to arrive through a GitHub Issue Form and then be turned into a PR by GitHub Actions.
 
+## Operational Disclaimer
+
+This tool is provided as an aid to calculation and planning. It does not replace official procedures, aircraft manuals, or operational judgement.
+
+Users are responsible for ensuring all outputs are checked against approved data and guidance.
 
 ## Attribution and Citation
 
