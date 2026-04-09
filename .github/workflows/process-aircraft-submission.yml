@@ -96,6 +96,7 @@ jobs:
             Weight: `${{ steps.process_issue.outputs.weight }} kg`
 
             Closes #${{ github.event.issue.number }}
+          assignees: b-kennedy0
 
       - name: Comment with pull request link
         if: steps.process_issue.outputs.change_action != 'no-change' && steps.create_pr.outputs.pull-request-url != ''
