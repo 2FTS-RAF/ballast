@@ -243,10 +243,6 @@ a {
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.25);
 }
 
-.modal-card.is-form-active {
-  width: min(64rem, 100%);
-}
-
 .modal-card__top {
   display: flex;
   align-items: start;
@@ -273,24 +269,7 @@ a {
   line-height: 1.6;
 }
 
-.modal-action-stack {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.modal-action-stack .button {
-  width: 100%;
-  justify-content: flex-start;
-  text-align: left;
-}
-
-.modal-toolbar {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.modal-close,
-.modal-back {
+.modal-close {
   border: 1px solid rgba(15, 76, 92, 0.16);
   border-radius: 999px;
   padding: 0.65rem 0.95rem;
@@ -302,9 +281,7 @@ a {
 }
 
 .modal-close:hover,
-.modal-close:focus-visible,
-.modal-back:hover,
-.modal-back:focus-visible {
+.modal-close:focus-visible {
   transform: translateY(-1px);
   box-shadow: 0 12px 22px rgba(15, 27, 48, 0.12);
   outline: none;

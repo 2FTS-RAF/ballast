@@ -111,23 +111,14 @@
     elements.multiSummaryTable = document.getElementById("multiSummaryTable");
     elements.aircraftSubmissionModal = document.getElementById("aircraftSubmissionModal");
     elements.aircraftSubmissionCard = document.getElementById("aircraftSubmissionCard");
-    elements.aircraftSubmissionChoiceView = document.getElementById("aircraftSubmissionChoiceView");
-    elements.aircraftSubmissionFormView = document.getElementById("aircraftSubmissionFormView");
     elements.aircraftSubmissionCloseButton = document.getElementById("aircraftSubmissionCloseButton");
-    elements.aircraftGithubOptionButton = document.getElementById("aircraftGithubOptionButton");
-    elements.aircraftManualOptionButton = document.getElementById("aircraftManualOptionButton");
-    elements.aircraftSubmissionBackButton = document.getElementById("aircraftSubmissionBackButton");
     elements.tripettoStatus = document.getElementById("tripettoStatus");
-    elements.tripettoMount = document.getElementById("tripetto-19a4onr");
   }
 
   function bindEvents() {
     elements.retryLoadButton.addEventListener("click", loadAircraftData);
     elements.addAircraftButton.addEventListener("click", openAircraftSubmissionModal);
     elements.aircraftSubmissionCloseButton.addEventListener("click", closeAircraftSubmissionModal);
-    elements.aircraftGithubOptionButton.addEventListener("click", openGitHubAircraftSubmission);
-    elements.aircraftManualOptionButton.addEventListener("click", showAircraftSubmissionFormView);
-    elements.aircraftSubmissionBackButton.addEventListener("click", showAircraftSubmissionChoiceView);
     elements.aircraftSubmissionModal.addEventListener("click", handleAircraftSubmissionModalClick);
     document.addEventListener("keydown", handleDocumentKeydown);
     elements.modeSingleButton.addEventListener("click", () => setMode("single"));
@@ -281,46 +272,30 @@
 
   function openAircraftSubmissionModal() {
     lastFocusedElement = document.activeElement;
-    showAircraftSubmissionChoiceView();
     elements.aircraftSubmissionModal.hidden = false;
     elements.aircraftSubmissionModal.classList.add("is-active");
     document.body.classList.add("is-modal-open");
-    elements.aircraftGithubOptionButton.focus();
+    elements.aircraftSubmissionCloseButton.focus();
+    elements.tripettoStatus.hidden = false;
+    elements.tripettoStatus.textContent = "Loading form...";
+
+    ensureTripettoForm()
+      .then(() => {
+        elements.tripettoStatus.hidden = true;
+      })
+      .catch((error) => {
+        elements.tripettoStatus.hidden = false;
+        elements.tripettoStatus.textContent = `${error.message} Please try again later.`;
+      });
   }
 
   function closeAircraftSubmissionModal() {
     elements.aircraftSubmissionModal.classList.remove("is-active");
     elements.aircraftSubmissionModal.hidden = true;
     document.body.classList.remove("is-modal-open");
-    showAircraftSubmissionChoiceView();
 
     if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
       lastFocusedElement.focus();
-    }
-  }
-
-  function showAircraftSubmissionChoiceView() {
-    elements.aircraftSubmissionCard.classList.remove("is-form-active");
-    elements.aircraftSubmissionChoiceView.hidden = false;
-    elements.aircraftSubmissionFormView.hidden = true;
-    elements.tripettoStatus.hidden = false;
-    elements.tripettoStatus.textContent = "Loading form...";
-  }
-
-  async function showAircraftSubmissionFormView() {
-    elements.aircraftSubmissionCard.classList.add("is-form-active");
-    elements.aircraftSubmissionChoiceView.hidden = true;
-    elements.aircraftSubmissionFormView.hidden = false;
-    elements.tripettoStatus.hidden = false;
-    elements.tripettoStatus.textContent = "Loading form...";
-    elements.aircraftSubmissionBackButton.focus();
-
-    try {
-      await ensureTripettoForm();
-      elements.tripettoStatus.hidden = true;
-    } catch (error) {
-      elements.tripettoStatus.hidden = false;
-      elements.tripettoStatus.textContent = `${error.message} Please try again later or use the GitHub option.`;
     }
   }
 
@@ -334,21 +309,6 @@
     if (event.key === "Escape" && elements.aircraftSubmissionModal.classList.contains("is-active")) {
       closeAircraftSubmissionModal();
     }
-  }
-
-  function openGitHubAircraftSubmission() {
-    const url = elements.addAircraftButton.dataset.githubUrl;
-
-    if (!url) {
-      return;
-    }
-
-    const openedWindow = global.open(url, "_blank", "noopener,noreferrer");
-    if (!openedWindow) {
-      global.location.href = url;
-    }
-
-    closeAircraftSubmissionModal();
   }
 
   async function ensureTripettoForm() {

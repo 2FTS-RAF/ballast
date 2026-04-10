@@ -65,7 +65,6 @@
               id="addAircraftButton"
               class="button button--ghost"
               type="button"
-              data-github-url="https://github.com/2FTS-RAF/ballast/issues/new?template=add-aircraft.yml"
             >
               Add new aircraft
             </button>
@@ -292,7 +291,7 @@
           <div class="modal-card__top">
             <div>
               <p class="card__eyebrow">Aircraft submission</p>
-              <h2 id="aircraftSubmissionDialogTitle">Add new aircraft</h2>
+              <h2 id="aircraftSubmissionDialogTitle">Add aircraft for manual review</h2>
             </div>
             <button
               id="aircraftSubmissionCloseButton"
@@ -304,31 +303,9 @@
             </button>
           </div>
 
-          <div id="aircraftSubmissionChoiceView" class="modal-view">
+          <div class="modal-view">
             <p class="modal-copy">
-              Choose whether to submit directly on GitHub or send the details for manual review.
-            </p>
-
-            <div class="modal-action-stack">
-              <button id="aircraftGithubOptionButton" class="button button--primary" type="button">
-                Add directly on GitHub (requires GitHub account)
-              </button>
-              <button id="aircraftManualOptionButton" class="button button--ghost" type="button">
-                Add for manual review (no account required)
-              </button>
-            </div>
-          </div>
-
-          <div id="aircraftSubmissionFormView" class="modal-view" hidden>
-            <div class="modal-toolbar">
-              <button id="aircraftSubmissionBackButton" class="modal-back" type="button">
-                Back
-              </button>
-            </div>
-
-            <p class="modal-copy">
-              Complete the form below if you would like the aircraft details checked manually instead
-              of submitting directly through GitHub.
+              Complete the form below to send a new aircraft request for manual review.
             </p>
             <p id="tripettoStatus" class="helper-text" role="status">
               Loading form...
