@@ -20,6 +20,8 @@
     { value: "1", label: "One", mass: 7 },
     { value: "2", label: "Two", mass: 15 }
   ];
+  const HOME_SCREEN_PROMPT_STORAGE_KEY = "ballast-home-screen-prompt-seen";
+  const MOBILE_SCREEN_QUERY = "(max-width: 699px)";
 
   const api = {
     helpers: {
@@ -113,6 +115,8 @@
     elements.aircraftSubmissionCard = document.getElementById("aircraftSubmissionCard");
     elements.aircraftSubmissionCloseButton = document.getElementById("aircraftSubmissionCloseButton");
     elements.tripettoStatus = document.getElementById("tripettoStatus");
+    elements.homeScreenPrompt = document.getElementById("homeScreenPrompt");
+    elements.homeScreenPromptDismiss = document.getElementById("homeScreenPromptDismiss");
   }
 
   function bindEvents() {
@@ -120,6 +124,9 @@
     elements.addAircraftButton.addEventListener("click", openAircraftSubmissionModal);
     elements.aircraftSubmissionCloseButton.addEventListener("click", closeAircraftSubmissionModal);
     elements.aircraftSubmissionModal.addEventListener("click", handleAircraftSubmissionModalClick);
+    if (elements.homeScreenPromptDismiss) {
+      elements.homeScreenPromptDismiss.addEventListener("click", dismissHomeScreenPrompt);
+    }
     document.addEventListener("keydown", handleDocumentKeydown);
     elements.modeSingleButton.addEventListener("click", () => setMode("single"));
     elements.modeMultiButton.addEventListener("click", () => setMode("multi"));
@@ -221,6 +228,7 @@
       renderAll();
       hideLoadState();
       clearBanner();
+      maybeShowHomeScreenPrompt();
       console.info(`Loaded ${aircraftData.length} aircraft from assets/aircraft_weights.csv.`);
     } catch (error) {
       showLoadState({
@@ -297,6 +305,76 @@
     if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
       lastFocusedElement.focus();
     }
+  }
+
+  function maybeShowHomeScreenPrompt() {
+    if (!elements.homeScreenPrompt || !shouldShowHomeScreenPrompt()) {
+      return;
+    }
+
+    elements.homeScreenPrompt.hidden = false;
+    elements.homeScreenPrompt.classList.add("is-visible");
+    markHomeScreenPromptSeen();
+  }
+
+  function dismissHomeScreenPrompt() {
+    if (!elements.homeScreenPrompt) {
+      return;
+    }
+
+    elements.homeScreenPrompt.classList.remove("is-visible");
+    elements.homeScreenPrompt.hidden = true;
+  }
+
+  function shouldShowHomeScreenPrompt() {
+    return !hasSeenHomeScreenPrompt() && isMobileBrowserViewport() && !isStandaloneDisplayMode();
+  }
+
+  function hasSeenHomeScreenPrompt() {
+    try {
+      return global.localStorage.getItem(HOME_SCREEN_PROMPT_STORAGE_KEY) === "true";
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function markHomeScreenPromptSeen() {
+    try {
+      global.localStorage.setItem(HOME_SCREEN_PROMPT_STORAGE_KEY, "true");
+    } catch (error) {
+      // Ignore storage failures so the app can continue to render normally.
+    }
+  }
+
+  function isMobileBrowserViewport() {
+    const viewportMatches = global.matchMedia
+      ? global.matchMedia(MOBILE_SCREEN_QUERY).matches
+      : global.innerWidth <= 699;
+
+    if (!viewportMatches) {
+      return false;
+    }
+
+    const coarsePointer = global.matchMedia ? global.matchMedia("(pointer: coarse)").matches : false;
+    const maxTouchPoints = global.navigator && typeof global.navigator.maxTouchPoints === "number"
+      ? global.navigator.maxTouchPoints
+      : 0;
+    const userAgent = global.navigator && typeof global.navigator.userAgent === "string"
+      ? global.navigator.userAgent
+      : "";
+
+    return coarsePointer
+      || maxTouchPoints > 0
+      || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+  }
+
+  function isStandaloneDisplayMode() {
+    const displayModeStandalone = global.matchMedia
+      ? global.matchMedia("(display-mode: standalone)").matches
+      : false;
+    const navigatorStandalone = Boolean(global.navigator && global.navigator.standalone);
+
+    return displayModeStandalone || navigatorStandalone;
   }
 
   function handleAircraftSubmissionModalClick(event) {

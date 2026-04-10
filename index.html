@@ -291,7 +291,7 @@
           <div class="modal-card__top">
             <div>
               <p class="card__eyebrow">Aircraft submission</p>
-              <h2 id="aircraftSubmissionDialogTitle">Add aircraft for manual review</h2>
+              <h2 id="aircraftSubmissionDialogTitle">Add new aircraft to dataset</h2>
             </div>
             <button
               id="aircraftSubmissionCloseButton"
@@ -305,7 +305,7 @@
 
           <div class="modal-view">
             <p class="modal-copy">
-              Complete the form below to send a new aircraft request for manual review.
+              Complete the form below to submit a new aircraft for inclusion in the dataset.
             </p>
             <p id="tripettoStatus" class="helper-text" role="status">
               Loading form...
@@ -317,5 +317,31 @@
 
       <footer class="footer" data-shared-footer data-footer-src="partials/footer.html"></footer>
     </div>
+
+    <section
+      id="homeScreenPrompt"
+      class="home-screen-prompt"
+      aria-labelledby="homeScreenPromptTitle"
+      aria-describedby="homeScreenPromptText"
+      hidden
+    >
+      <div class="home-screen-prompt__content">
+        <p class="home-screen-prompt__eyebrow">Quick access</p>
+        <p id="homeScreenPromptTitle" class="home-screen-prompt__title">
+          Add Ballast App to your Home Screen
+        </p>
+        <p id="homeScreenPromptText" class="home-screen-prompt__text">
+          Use the Share button in your browser, then select Add to Home Screen.
+        </p>
+      </div>
+      <button
+        id="homeScreenPromptDismiss"
+        class="home-screen-prompt__dismiss"
+        type="button"
+        aria-label="Dismiss home screen suggestion"
+      >
+        Not now
+      </button>
+    </section>
   </body>
 </html>

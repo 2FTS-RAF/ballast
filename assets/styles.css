@@ -852,6 +852,94 @@ main {
   text-decoration: underline;
 }
 
+.home-screen-prompt {
+  position: fixed;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  display: none;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.9rem;
+  align-items: end;
+  padding: 1rem;
+  padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  border: 1px solid rgba(15, 76, 92, 0.16);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(9, 56, 71, 0.96), rgba(15, 76, 92, 0.94)),
+    rgba(9, 56, 71, 0.96);
+  color: #ffffff;
+  box-shadow: 0 20px 48px rgba(7, 20, 32, 0.28);
+  z-index: 45;
+  animation: home-screen-prompt-in 220ms ease;
+}
+
+.home-screen-prompt.is-visible {
+  display: grid;
+}
+
+.home-screen-prompt__content {
+  min-width: 0;
+}
+
+.home-screen-prompt__eyebrow {
+  margin: 0 0 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.home-screen-prompt__title {
+  margin: 0;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.home-screen-prompt__text {
+  margin: 0.45rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.home-screen-prompt__dismiss {
+  flex: 0 0 auto;
+  min-height: 2.5rem;
+  padding: 0.65rem 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.home-screen-prompt__dismiss:hover,
+.home-screen-prompt__dismiss:focus-visible {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 10px 20px rgba(7, 20, 32, 0.18);
+  outline: none;
+}
+
+@keyframes home-screen-prompt-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .load-overlay {
   position: fixed;
   inset: 0;
@@ -1030,5 +1118,28 @@ main {
 
   .modal-close {
     align-self: flex-start;
+  }
+
+  .home-screen-prompt {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .home-screen-prompt__dismiss {
+    justify-self: flex-start;
+  }
+}
+
+@media (min-width: 700px) {
+  .home-screen-prompt.is-visible {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-screen-prompt,
+  .home-screen-prompt__dismiss {
+    animation: none;
+    transition: none;
   }
 }
