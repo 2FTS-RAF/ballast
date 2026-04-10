@@ -45,6 +45,10 @@ body {
     linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
 }
 
+body.is-modal-open {
+  overflow: hidden;
+}
+
 [hidden] {
   display: none !important;
 }
@@ -210,6 +214,104 @@ a {
   border-color: rgba(15, 76, 92, 0.16);
   background: rgba(255, 255, 255, 0.7);
   color: var(--brand-strong);
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(7, 20, 32, 0.58);
+  backdrop-filter: blur(8px);
+  z-index: 60;
+}
+
+.modal-overlay.is-active {
+  display: flex;
+}
+
+.modal-card {
+  width: min(36rem, 100%);
+  max-height: min(88vh, 56rem);
+  padding: 1.35rem;
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 28px;
+  background: var(--panel-strong);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.25);
+}
+
+.modal-card.is-form-active {
+  width: min(64rem, 100%);
+}
+
+.modal-card__top {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.modal-card__top h2 {
+  margin: 0;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+  font-size: clamp(1.35rem, 3vw, 1.9rem);
+  letter-spacing: -0.02em;
+}
+
+.modal-view {
+  display: grid;
+  gap: 1rem;
+}
+
+.modal-copy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.modal-action-stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.modal-action-stack .button {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.modal-toolbar {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.modal-close,
+.modal-back {
+  border: 1px solid rgba(15, 76, 92, 0.16);
+  border-radius: 999px;
+  padding: 0.65rem 0.95rem;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--brand-strong);
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.modal-close:hover,
+.modal-close:focus-visible,
+.modal-back:hover,
+.modal-back:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(15, 27, 48, 0.12);
+  outline: none;
+}
+
+.tripetto-shell {
+  min-height: 32rem;
 }
 
 main {
@@ -939,5 +1041,17 @@ main {
 
   .footer__links {
     justify-content: flex-start;
+  }
+
+  .modal-card {
+    padding: 1rem;
+  }
+
+  .modal-card__top {
+    flex-direction: column;
+  }
+
+  .modal-close {
+    align-self: flex-start;
   }
 }
