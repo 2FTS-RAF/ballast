@@ -20,7 +20,7 @@
     { value: "1", label: "One", mass: 7 },
     { value: "2", label: "Two", mass: 15 }
   ];
-  const HOME_SCREEN_PROMPT_STORAGE_KEY = "ballast-home-screen-prompt-seen";
+  const HOME_SCREEN_PROMPT_STORAGE_KEY = "ballast-home-screen-prompt-seen-v2";
   const MOBILE_SCREEN_QUERY = "(max-width: 699px)";
 
   const api = {
@@ -78,6 +78,7 @@
     bindEvents();
     setMode("single");
     renderPassengerInputs();
+    queueHomeScreenPrompt();
     loadAircraftData();
   }
 
@@ -228,7 +229,6 @@
       renderAll();
       hideLoadState();
       clearBanner();
-      maybeShowHomeScreenPrompt();
       console.info(`Loaded ${aircraftData.length} aircraft from assets/aircraft_weights.csv.`);
     } catch (error) {
       showLoadState({
@@ -317,6 +317,10 @@
     markHomeScreenPromptSeen();
   }
 
+  function queueHomeScreenPrompt() {
+    global.setTimeout(maybeShowHomeScreenPrompt, 300);
+  }
+
   function dismissHomeScreenPrompt() {
     if (!elements.homeScreenPrompt) {
       return;
@@ -347,25 +351,9 @@
   }
 
   function isMobileBrowserViewport() {
-    const viewportMatches = global.matchMedia
+    return global.matchMedia
       ? global.matchMedia(MOBILE_SCREEN_QUERY).matches
       : global.innerWidth <= 699;
-
-    if (!viewportMatches) {
-      return false;
-    }
-
-    const coarsePointer = global.matchMedia ? global.matchMedia("(pointer: coarse)").matches : false;
-    const maxTouchPoints = global.navigator && typeof global.navigator.maxTouchPoints === "number"
-      ? global.navigator.maxTouchPoints
-      : 0;
-    const userAgent = global.navigator && typeof global.navigator.userAgent === "string"
-      ? global.navigator.userAgent
-      : "";
-
-    return coarsePointer
-      || maxTouchPoints > 0
-      || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
   }
 
   function isStandaloneDisplayMode() {
