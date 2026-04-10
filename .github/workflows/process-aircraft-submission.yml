@@ -94,6 +94,7 @@ jobs:
             Change type: `${{ steps.process_issue.outputs.change_action }}`
             Aircraft: `${{ steps.process_issue.outputs.aircraft }}`
             Weight: `${{ steps.process_issue.outputs.weight }} kg`
+            Submitter email: `${{ steps.process_issue.outputs.submitter_email }}`
 
             Closes #${{ github.event.issue.number }}
           assignees: b-kennedy0

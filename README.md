@@ -78,7 +78,7 @@ Aircraft records are stored in `assets/aircraft_weights.csv`.
 New aircraft entries or updates are intended to be submitted through the repository's GitHub Issue Form:
 
 - Issue form: [Add aircraft](https://github.com/2FTS-RAF/ballast/issues/new?template=add-aircraft.yml)
-- You provide the aircraft tail number and aircraft weight in kilograms.
+- You provide the aircraft tail number, aircraft weight in kilograms, and a submitter email address.
 - A GitHub Actions workflow processes the submission.
 - If a change is required, the automation opens a pull request to update `assets/aircraft_weights.csv`.
 - If the submitted data already matches the CSV, the issue is commented and no pull request is created.

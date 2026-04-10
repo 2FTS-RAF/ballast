@@ -19,6 +19,7 @@ export function main({
   const fields = parseIssueBody(issueBody);
   const aircraft = normaliseAircraft(fields["Aircraft tail number"]);
   const weight = normaliseWeight(fields["Aircraft weight (kg)"]);
+  const submitterEmail = normaliseEmail(fields["Submitter email"]);
   assertConfirmation(fields["Confirmation"]);
 
   const rows = parseCsv(fs.readFileSync(csvPath, "utf8"));
@@ -58,11 +59,13 @@ export function main({
 
   setOutput("aircraft", aircraft);
   setOutput("weight", weight);
+  setOutput("submitter_email", submitterEmail || "Not provided");
   setOutput("change_action", changeAction);
 
   return {
     aircraft,
     weight,
+    submitterEmail,
     changeAction
   };
 }
@@ -131,6 +134,20 @@ function normaliseWeight(value) {
   }
 
   return String(Number(parsed.toFixed(4)));
+}
+
+function normaliseEmail(value) {
+  const email = String(value || "").trim();
+
+  if (!email) {
+    return "";
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new Error("Submitter email is not a valid email address.");
+  }
+
+  return email;
 }
 
 function assertConfirmation(value) {
