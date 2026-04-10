@@ -68,7 +68,11 @@ export function main({
 }
 
 export function parseIssueBody(markdown) {
-  const normalised = markdown.replace(/\r\n/g, "\n").trim();
+  const normalised = markdown
+    .replace(/\r\n/g, "\n")
+    .replace(/\\r\\n/g, "\n")
+    .replace(/\\n/g, "\n")
+    .trim();
   const fields = {};
 
   if (!normalised) {
