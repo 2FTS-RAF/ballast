@@ -5,10 +5,15 @@
   const DEFAULT_PASSENGER_COUNT = 10;
   const MAX_PASSENGERS = 50;
   const MIN_PASSENGERS = 1;
-  const MAX_WEIGHT = 120;
+  const MAX_WEIGHT = 110;
   const OVERWEIGHT_LIMIT = 110;
+  const FRONT_SEAT_MIN_WEIGHT = 55;
   const MAX_AUM = 625;
   const APPROACH_SPEED_THRESHOLD = 580;
+  const APPROACH_SPEEDS = {
+    belowThreshold: 55,
+    thresholdOrAbove: 60
+  };
   const TRIPETTO_SCRIPT_URLS = [
     "https://cdn.jsdelivr.net/npm/@tripetto/runner",
     "https://cdn.jsdelivr.net/npm/@tripetto/runner-classic",
@@ -20,6 +25,153 @@
     { value: "1", label: "One", mass: 7 },
     { value: "2", label: "Two", mass: 15 }
   ];
+  const ALLOCATION_TYPES = [
+    {
+      value: "all-available",
+      label: "All Available",
+      description: "List every aircraft each passenger can use."
+    },
+    {
+      value: "auto-allocate",
+      label: "Auto Allocate",
+      description: "Assign one aircraft per passenger and balance counts where possible."
+    },
+    {
+      value: "manual-allocation",
+      label: "Manual Allocation",
+      description: "Select one eligible aircraft per passenger in the table."
+    }
+  ];
+  const PASSENGER_BALLAST_RULES = [
+    {
+      min: 0,
+      max: 42,
+      auditLabel: "Below 42 kg",
+      summary: {
+        required: "N/A",
+        permitted: "0",
+        status: "Passenger too light to fly",
+        code: "too-light",
+        allowedBallastCounts: []
+      },
+      single: {
+        tone: "danger",
+        text: "PASSENGER TOO LIGHT TO FLY"
+      }
+    },
+    {
+      min: 42,
+      max: 55,
+      auditLabel: "42 kg to under 55 kg",
+      summary: {
+        required: "N/A",
+        permitted: "N/A",
+        status: "Rear seat only",
+        code: "rear-only",
+        allowedBallastCounts: []
+      },
+      single: {
+        tone: "warning",
+        text: "PASSENGER IN REAR SEAT ONLY"
+      }
+    },
+    {
+      min: 55,
+      max: 63,
+      auditLabel: "55 kg to under 63 kg",
+      summary: {
+        required: "2",
+        permitted: "2",
+        status: "Two ballast weights must be fitted",
+        code: "must-use-two",
+        allowedBallastCounts: [2]
+      },
+      single: {
+        tone: "warning",
+        text: "TWO Ballast weights MUST be fitted"
+      }
+    },
+    {
+      min: 63,
+      max: 70,
+      auditLabel: "63 kg to under 70 kg",
+      summary: {
+        required: "At least 1",
+        permitted: "1 or 2",
+        status: "At least one ballast weight must be fitted",
+        code: "must-use-one-or-two",
+        allowedBallastCounts: [1, 2]
+      },
+      single: {
+        tone: "warning",
+        text: "at least ONE Ballast weight MUST be fitted"
+      }
+    },
+    {
+      min: 70,
+      max: 95,
+      auditLabel: "70 kg to under 95 kg",
+      summary: {
+        required: "0",
+        permitted: "0, 1, or 2",
+        status: "Ballast not required",
+        code: "ballast-optional-all",
+        allowedBallastCounts: [0, 1, 2]
+      },
+      single: {
+        tone: "success",
+        text: "Ballast not required, but 1 or 2 may be fitted"
+      }
+    },
+    {
+      min: 95,
+      max: 103,
+      auditLabel: "95 kg to under 103 kg",
+      summary: {
+        required: "0",
+        permitted: "0 or 1",
+        status: "Ballast not required",
+        code: "ballast-optional-zero-or-one",
+        allowedBallastCounts: [0, 1]
+      },
+      single: {
+        tone: "success",
+        text: "Ballast not required, but 1 may be fitted"
+      }
+    },
+    {
+      min: 103,
+      max: 111,
+      auditLabel: "103 kg to 110 kg",
+      summary: {
+        required: "0",
+        permitted: "0",
+        status: "Ballast not permitted",
+        code: "ballast-not-permitted",
+        allowedBallastCounts: [0]
+      },
+      single: {
+        tone: "danger",
+        text: "Ballast weights are NOT PERMITTED"
+      }
+    },
+    {
+      min: 111,
+      max: Infinity,
+      auditLabel: "Above 110 kg",
+      summary: {
+        required: "N/A",
+        permitted: "0",
+        status: "Passenger too heavy to fly",
+        code: "too-heavy",
+        allowedBallastCounts: []
+      },
+      single: {
+        tone: "danger",
+        text: "PASSENGER TOO HEAVY TO FLY"
+      }
+    }
+  ];
   const HOME_SCREEN_PROMPT_STORAGE_KEY = "ballast-home-screen-prompt-seen-v2";
   const MOBILE_SCREEN_QUERY = "(max-width: 699px)";
 
@@ -28,9 +180,13 @@
       parseCsv,
       normaliseAircraftRows,
       buildBallastSummary,
+      buildAuditReference,
+      buildMultiSummaryTableModel,
       calculateSingleModel,
       resolveAircraftAllocation,
       getValidAircraftConfigs,
+      buildPassengerAllocationOptions,
+      autoAllocatePassengers,
       formatWeight,
       getBallastMass
     }
@@ -55,6 +211,7 @@
       passengerCount: DEFAULT_PASSENGER_COUNT,
       passengers: buildPassengerList(DEFAULT_PASSENGER_COUNT),
       allocationEnabled: false,
+      allocationType: "all-available",
       selectedAircraft: [],
       aircraftConfigs: {}
     }
@@ -75,6 +232,11 @@
 
   function init() {
     cacheElements();
+
+    if (!elements.modeSingleButton || !elements.modeMultiButton) {
+      return;
+    }
+
     bindEvents();
     setMode("single");
     renderPassengerInputs();
@@ -111,6 +273,11 @@
     elements.passengerInputs = document.getElementById("passengerInputs");
     elements.aircraftConfigCard = document.getElementById("aircraftConfigCard");
     elements.aircraftConfigList = document.getElementById("aircraftConfigList");
+    elements.multiAllocationPanel = document.getElementById("multiAllocationPanel");
+    elements.multiAllocationTypeOptions = document.getElementById("multiAllocationTypeOptions");
+    elements.multiAllocationStats = document.getElementById("multiAllocationStats");
+    elements.manualAllocationActions = document.getElementById("manualAllocationActions");
+    elements.resetManualAllocationButton = document.getElementById("resetManualAllocationButton");
     elements.multiSummaryTable = document.getElementById("multiSummaryTable");
     elements.aircraftSubmissionModal = document.getElementById("aircraftSubmissionModal");
     elements.aircraftSubmissionCard = document.getElementById("aircraftSubmissionCard");
@@ -171,6 +338,9 @@
 
     elements.multiAircraftToggle.addEventListener("change", (event) => {
       state.multi.allocationEnabled = event.target.checked;
+      if (state.multi.allocationEnabled) {
+        state.multi.allocationType = "all-available";
+      }
       renderAircraftPicker();
       renderAircraftConfigSection();
       renderMultiSummary();
@@ -206,6 +376,9 @@
     elements.multiAircraftPickerList.addEventListener("change", handleAircraftPickerChange);
     elements.aircraftConfigList.addEventListener("input", handleAircraftConfigInteraction);
     elements.aircraftConfigList.addEventListener("change", handleAircraftConfigInteraction);
+    elements.multiAllocationTypeOptions.addEventListener("change", handleAllocationTypeChange);
+    elements.multiSummaryTable.addEventListener("change", handleMultiSummaryInteraction);
+    elements.resetManualAllocationButton.addEventListener("click", resetManualAllocations);
     elements.saveSummaryButton.addEventListener("click", saveSummaryPdf);
     elements.resetMultiButton.addEventListener("click", resetMultiMode);
   }
@@ -529,7 +702,7 @@
             <input
               type="number"
               min="0"
-              max="120"
+              max="110"
               step="1"
               inputmode="decimal"
               data-field="weight"
@@ -580,11 +753,20 @@
             </div>
             <div class="aircraft-config-card__fields">
               <label class="field">
+                <span>Aircraft Commander Name <em>(optional)</em></span>
+                <input
+                  type="text"
+                  data-field="commanderName"
+                  value="${escapeAttribute(config.commanderName)}"
+                  placeholder="Enter name"
+                >
+              </label>
+              <label class="field">
                 <span>Aircraft Commander <u>(WITH parachute)</u></span>
                 <input
                   type="number"
                   min="0"
-                  max="120"
+                  max="110"
                   step="1"
                   inputmode="decimal"
                   data-field="commanderWeight"
@@ -602,15 +784,6 @@
                   }).join("")}
                 </select>
               </label>
-              <div class="field">
-                <span>Ballast weight</span>
-                <input
-                  type="text"
-                  data-display="ballastMass"
-                  value="${config.ballastCount === "" ? "Not set" : `${formatWeight(getBallastMass(config.ballastCount))} kg`}"
-                  disabled
-                >
-              </div>
             </div>
             <p class="validation-note ${validation.className}">${escapeHtml(validation.message)}</p>
           </div>
@@ -655,6 +828,7 @@
 
   function renderMultiSummary() {
     const summary = buildMultiSummaryTableModel(state.multi, state.aircraftData);
+    renderMultiAllocationPanel(summary);
 
     if (!summary.rows.length) {
       elements.multiSummaryTable.innerHTML = `<div class="empty-state">No passenger data to show.</div>`;
@@ -665,20 +839,123 @@
     const rowHtml = summary.rows
       .map((row) => {
         const cells = summary.columns
-          .map((column) => `<td>${escapeHtml(row[column.key])}</td>`)
+          .map((column) => {
+            if (column.html) {
+              return `<td>${row[column.key]}</td>`;
+            }
+
+            return `<td>${escapeHtml(row[column.key])}</td>`;
+          })
           .join("");
         return `<tr>${cells}</tr>`;
       })
       .join("");
 
     elements.multiSummaryTable.innerHTML = `
-      <table class="data-table">
+      <table class="data-table ${summary.tableClassName}">
         <thead>
           <tr>${headerHtml}</tr>
         </thead>
         <tbody>${rowHtml}</tbody>
       </table>
     `;
+  }
+
+  function renderMultiAllocationPanel(summary) {
+    const showPanel = state.multi.allocationEnabled;
+    elements.multiAllocationPanel.hidden = !showPanel;
+
+    if (!showPanel) {
+      elements.multiAllocationTypeOptions.innerHTML = "";
+      elements.multiAllocationStats.innerHTML = "";
+      elements.multiAllocationStats.hidden = true;
+      elements.manualAllocationActions.hidden = true;
+      return;
+    }
+
+    elements.multiAllocationTypeOptions.innerHTML = ALLOCATION_TYPES.map((option) => {
+      const checked = summary.allocationType === option.value ? "checked" : "";
+
+      return `
+        <label class="allocation-type-option">
+          <input
+            type="radio"
+            name="multiAllocationType"
+            value="${escapeAttribute(option.value)}"
+            ${checked}
+          >
+          <span class="allocation-type-option__content">
+            <span class="allocation-type-option__title">${escapeHtml(option.label)}</span>
+            <span class="allocation-type-option__note">${escapeHtml(option.description)}</span>
+          </span>
+        </label>
+      `;
+    }).join("");
+
+    elements.multiAllocationStats.hidden = !summary.showPassengerCounts;
+    if (summary.showPassengerCounts) {
+      elements.multiAllocationStats.innerHTML = `
+        <div class="allocation-stats__header">
+          <span>Passenger Count</span>
+        </div>
+        <div class="allocation-stats__grid">
+          ${summary.passengerCounts.map((item) => {
+            const className = item.key === "unallocated" ? "allocation-stat allocation-stat--unallocated" : "allocation-stat";
+            return `
+              <div class="${className}">
+                <span class="allocation-stat__label">${escapeHtml(item.label)}</span>
+                <span class="allocation-stat__value">${escapeHtml(String(item.count))}</span>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      `;
+    } else {
+      elements.multiAllocationStats.innerHTML = "";
+    }
+
+    elements.manualAllocationActions.hidden = summary.allocationType !== "manual-allocation";
+  }
+
+  function handleAllocationTypeChange(event) {
+    const target = event.target;
+
+    if (target.name !== "multiAllocationType") {
+      return;
+    }
+
+    state.multi.allocationType = target.value;
+    renderMultiSummary();
+  }
+
+  function handleMultiSummaryInteraction(event) {
+    const target = event.target;
+
+    if (target.dataset.field !== "manualAllocation") {
+      return;
+    }
+
+    const index = Number(target.dataset.passengerIndex);
+    const passenger = state.multi.passengers[index];
+
+    if (!passenger) {
+      return;
+    }
+
+    if (target.checked) {
+      passenger.manualAllocation = target.value;
+    } else if (passenger.manualAllocation === target.value) {
+      passenger.manualAllocation = "";
+    }
+
+    renderMultiSummary();
+  }
+
+  function resetManualAllocations() {
+    state.multi.passengers.forEach((passenger) => {
+      passenger.manualAllocation = "";
+    });
+    renderMultiSummary();
   }
 
   function handleAircraftConfigInteraction(event) {
@@ -694,6 +971,10 @@
 
     if (!config) {
       return;
+    }
+
+    if (target.dataset.field === "commanderName") {
+      config.commanderName = target.value;
     }
 
     if (target.dataset.field === "commanderWeight") {
@@ -723,6 +1004,7 @@
     state.multi.passengerCount = DEFAULT_PASSENGER_COUNT;
     state.multi.passengers = buildPassengerList(DEFAULT_PASSENGER_COUNT);
     state.multi.allocationEnabled = false;
+    state.multi.allocationType = "all-available";
     state.multi.selectedAircraft = [];
     seedAircraftConfigs(true);
     renderPassengerInputs();
@@ -761,7 +1043,6 @@
     }
 
     const summary = buildMultiSummaryTableModel(state.multi, state.aircraftData);
-    const { validConfigs, showAllocation } = summary;
     const doc = new jsPdfNamespace.jsPDF({
       orientation: "landscape",
       unit: "mm",
@@ -779,19 +1060,26 @@
 
     let startY = 24;
 
-    if (showAllocation && validConfigs.length) {
+    if (state.multi.allocationEnabled) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Allocation type: ${summary.allocationTypeLabel}`, 14, startY);
+      startY += 6;
+    }
+
+    if (summary.validConfigs.length) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.text("Aircraft settings used for allocation", 14, startY);
       startY += 4;
       doc.autoTable({
         startY,
-        head: [["Tail No", "Aircraft Commander (kg)", "Ballast Weights", "Ballast Weight (kg)"]],
-        body: validConfigs.map((config) => [
+        head: [["Tail No", "Aircraft Commander", "Aircraft Commander (kg)", "Ballast Weights"]],
+        body: summary.validConfigs.map((config) => [
           config.aircraft,
+          config.commanderName || "",
           formatWeight(config.commanderWeight),
-          getBallastLabel(config.ballastCount),
-          formatWeight(config.ballastMass)
+          getBallastLabel(config.ballastCount)
         ]),
         theme: "grid",
         styles: {
@@ -809,7 +1097,7 @@
     doc.autoTable({
       startY,
       head: [summary.columns.map((column) => column.label)],
-      body: summary.rows.map((row) => summary.columns.map((column) => row[column.key])),
+      body: summary.rows.map((row) => summary.columns.map((column) => row[column.pdfKey || column.key])),
       theme: "grid",
       styles: {
         fontSize: 8,
@@ -821,21 +1109,76 @@
         fillColor: [15, 76, 92]
       },
       margin: { left: 14, right: 14 },
-      columnStyles: showAllocation
+      columnStyles: summary.showAllocationColumn
         ? {
             5: { cellWidth: 80 }
           }
         : {}
     });
 
+    if (summary.includeAllocationPage) {
+      doc.addPage();
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text(`Aircraft Allocation - ${summary.allocationTypeLabel}`, 14, 16);
+
+      let allocationStartY = 24;
+      summary.allocationSections.forEach((section) => {
+        if (allocationStartY > 180) {
+          doc.addPage();
+          allocationStartY = 16;
+        }
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text(buildAllocationSectionHeading(section), 14, allocationStartY);
+        allocationStartY += 4;
+
+        doc.autoTable({
+          startY: allocationStartY,
+          head: [["Passenger", "Required Ballast", "Permitted Ballast", "Notes"]],
+          body: section.rows.length
+            ? section.rows.map((row) => [
+                row.passenger,
+                row.requiredBallast,
+                row.permittedBallast,
+                row.notes
+              ])
+            : [[section.key === "unallocated" ? "No unallocated passengers" : "No passengers allocated", "", "", ""]],
+          theme: "grid",
+          styles: {
+            fontSize: 8,
+            cellPadding: 2.2,
+            overflow: "linebreak",
+            valign: "top"
+          },
+          headStyles: {
+            fillColor: [15, 76, 92]
+          },
+          margin: { left: 14, right: 14 },
+          columnStyles: {
+            3: { cellWidth: 150 }
+          }
+        });
+
+        allocationStartY = doc.lastAutoTable.finalY + 8;
+      });
+    }
+
     doc.save(`ballast_summary_${formatIsoDate(new Date())}.pdf`);
   }
 
   function buildMultiSummaryTableModel(multiState, aircraftData) {
-    const validConfigs = multiState.allocationEnabled
+    const allocationEnabled = Boolean(multiState.allocationEnabled);
+    const allocationType = allocationEnabled
+      ? multiState.allocationType || "all-available"
+      : "all-available";
+    const allocationTypeLabel = getAllocationTypeLabel(allocationType);
+    const selectedAircraftNames = allocationEnabled ? getSelectedAircraftNames(multiState) : [];
+    const validConfigs = allocationEnabled
       ? getValidAircraftConfigs(aircraftData, multiState.aircraftConfigs, multiState.selectedAircraft)
       : [];
-    const showAllocation = multiState.allocationEnabled && validConfigs.length > 0;
+    const showAllocationColumn = allocationEnabled && selectedAircraftNames.length > 0;
     const columns = [
       { key: "passenger", label: "Passenger" },
       { key: "weight", label: "Weight with Para (KG)" },
@@ -843,36 +1186,387 @@
       { key: "permittedBallast", label: "Permitted Ballast" },
       { key: "notes", label: "Notes" }
     ];
-
-    if (showAllocation) {
-      columns.push({ key: "aircraftAllocation", label: "Aircraft Allocation" });
-    }
-
-    const rows = multiState.passengers.map((passenger, index) => {
+    const passengerModels = multiState.passengers.map((passenger, index) => {
       const name = passenger.name.trim() || `Pax${index + 1}`;
       const weightValue = getNumericValue(passenger.weight);
-      const summary = buildBallastSummary(weightValue);
-      const row = {
-        passenger: name,
+      const ballastSummary = buildBallastSummary(weightValue);
+      const allocationOptions = allocationEnabled
+        ? buildPassengerAllocationOptions(ballastSummary, weightValue, validConfigs)
+        : buildPassengerAllocationOptions(ballastSummary, weightValue, []);
+      const manualAllocation = passenger.manualAllocation || "";
+      const manualAllocationIsValid = manualAllocation !== ""
+        && allocationOptions.eligibleAircraftNames.includes(manualAllocation);
+
+      return {
+        index,
+        name,
         weight: passenger.weight === "" ? "" : formatWeight(weightValue),
-        requiredBallast: summary.required,
-        permittedBallast: summary.permitted,
-        notes: summary.status
+        weightValue,
+        requiredBallast: ballastSummary.required,
+        permittedBallast: ballastSummary.permitted,
+        notes: ballastSummary.status,
+        ballastSummary,
+        allocationOptions,
+        manualAllocation,
+        manualAllocationIsValid
+      };
+    });
+    const autoAssignments = allocationType === "auto-allocate"
+      ? autoAllocatePassengers(passengerModels, selectedAircraftNames)
+      : {};
+    const assignmentByPassenger = {};
+    const rows = passengerModels.map((passengerModel) => {
+      const row = {
+        passenger: passengerModel.name,
+        weight: passengerModel.weight,
+        requiredBallast: passengerModel.requiredBallast,
+        permittedBallast: passengerModel.permittedBallast,
+        notes: passengerModel.notes
       };
 
-      if (showAllocation) {
-        row.aircraftAllocation = resolveAircraftAllocation(summary, weightValue, validConfigs);
+      if (!showAllocationColumn) {
+        return row;
       }
 
+      if (allocationType === "all-available") {
+        const allocationDisplay = resolveAircraftAllocation(
+          passengerModel.ballastSummary,
+          passengerModel.weightValue,
+          validConfigs
+        );
+        row.aircraftAllocationDisplay = allocationDisplay;
+        row.aircraftAllocationText = allocationDisplay;
+        return row;
+      }
+
+      if (allocationType === "auto-allocate") {
+        const assignedAircraft = autoAssignments[passengerModel.index] || "";
+        assignmentByPassenger[passengerModel.index] = assignedAircraft;
+        row.aircraftAllocationDisplay = assignedAircraft || "Not Allocated";
+        row.aircraftAllocationText = row.aircraftAllocationDisplay;
+        return row;
+      }
+
+      const assignedAircraft = passengerModel.manualAllocationIsValid
+        ? passengerModel.manualAllocation
+        : "";
+      assignmentByPassenger[passengerModel.index] = assignedAircraft;
+      row.aircraftAllocationDisplay = buildManualAllocationCell(passengerModel);
+      row.aircraftAllocationText = assignedAircraft || "Not Allocated";
       return row;
     });
 
+    if (showAllocationColumn) {
+      columns.push({
+        key: "aircraftAllocationDisplay",
+        pdfKey: "aircraftAllocationText",
+        label: getAllocationColumnLabel(allocationType),
+        html: allocationType === "manual-allocation"
+      });
+    }
+
+    const showPassengerCounts = allocationEnabled && allocationType !== "all-available";
+    const passengerCounts = showPassengerCounts
+      ? buildAllocationCounts(selectedAircraftNames, passengerModels, assignmentByPassenger)
+      : [];
+    const allocationSections = showPassengerCounts
+      ? buildAllocationSections(
+          selectedAircraftNames,
+          multiState.aircraftConfigs,
+          passengerModels,
+          assignmentByPassenger,
+          allocationType
+        )
+      : [];
+
     return {
+      allocationType,
+      allocationTypeLabel,
       columns,
       rows,
-      showAllocation,
-      validConfigs
+      showAllocationColumn,
+      showPassengerCounts,
+      passengerCounts,
+      validConfigs,
+      includeAllocationPage: showPassengerCounts,
+      allocationSections,
+      tableClassName: allocationType === "manual-allocation" && showAllocationColumn
+        ? "data-table--manual-allocation"
+        : ""
     };
+  }
+
+  function getAllocationTypeLabel(allocationType) {
+    const option = ALLOCATION_TYPES.find((item) => item.value === allocationType);
+    return option ? option.label : "All Available";
+  }
+
+  function getAllocationColumnLabel(allocationType) {
+    if (allocationType === "manual-allocation") {
+      return "Manual Allocation";
+    }
+
+    if (allocationType === "auto-allocate") {
+      return "Aircraft Allocation";
+    }
+
+    return "Available Aircraft";
+  }
+
+  function buildPassengerAllocationOptions(summary, passengerWeight, validConfigs) {
+    if (summary.code === "rear-only") {
+      return {
+        eligibleConfigs: [],
+        eligibleAircraftNames: [],
+        status: "rear-only",
+        reason: "Rear seat only",
+        displayText: "Rear seat only"
+      };
+    }
+
+    if (summary.code === "no-weight" || summary.code === "too-light" || summary.code === "too-heavy") {
+      return {
+        eligibleConfigs: [],
+        eligibleAircraftNames: [],
+        status: "not-allocatable",
+        reason: summary.status,
+        displayText: "Not Allocatable"
+      };
+    }
+
+    const eligibleConfigs = validConfigs.filter((config) => {
+      const ballastAllowed = summary.allowedBallastCounts.includes(config.ballastCount);
+      const withinMassLimit = config.weight + config.commanderWeight + passengerWeight + config.ballastMass <= MAX_AUM;
+      return ballastAllowed && withinMassLimit;
+    });
+
+    if (!eligibleConfigs.length) {
+      return {
+        eligibleConfigs: [],
+        eligibleAircraftNames: [],
+        status: "no-eligible-aircraft",
+        reason: "No eligible aircraft",
+        displayText: "No eligible aircraft"
+      };
+    }
+
+    return {
+      eligibleConfigs,
+      eligibleAircraftNames: eligibleConfigs.map((config) => config.aircraft),
+      status: "eligible",
+      reason: "",
+      displayText: eligibleConfigs.map((config) => config.aircraft).join(", ")
+    };
+  }
+
+  function autoAllocatePassengers(passengerModels, selectedAircraftNames) {
+    const aircraftOrder = new Map(
+      selectedAircraftNames.map((aircraft, index) => [aircraft, index])
+    );
+    const counts = Object.fromEntries(selectedAircraftNames.map((aircraft) => [aircraft, 0]));
+    const assignments = {};
+    const allocationQueue = passengerModels
+      .filter((passenger) => passenger.allocationOptions.eligibleAircraftNames.length > 0)
+      .slice()
+      .sort((left, right) => {
+        return left.allocationOptions.eligibleAircraftNames.length - right.allocationOptions.eligibleAircraftNames.length
+          || left.index - right.index;
+      });
+
+    allocationQueue.forEach((passenger) => {
+      const bestAircraft = passenger.allocationOptions.eligibleAircraftNames
+        .slice()
+        .sort((left, right) => {
+          return counts[left] - counts[right]
+            || (aircraftOrder.get(left) ?? Number.MAX_SAFE_INTEGER) - (aircraftOrder.get(right) ?? Number.MAX_SAFE_INTEGER);
+        })[0];
+
+      if (!bestAircraft) {
+        return;
+      }
+
+      assignments[passenger.index] = bestAircraft;
+      counts[bestAircraft] += 1;
+    });
+
+    return assignments;
+  }
+
+  function buildManualAllocationCell(passengerModel) {
+    const options = [];
+
+    if (passengerModel.manualAllocation && !passengerModel.manualAllocationIsValid) {
+      options.push(`
+        <label class="manual-allocation-option manual-allocation-option--invalid">
+          <input
+            type="checkbox"
+            data-field="manualAllocation"
+            data-passenger-index="${passengerModel.index}"
+            value="${escapeAttribute(passengerModel.manualAllocation)}"
+            checked
+          >
+          <span class="manual-allocation-option__content">
+            <span class="manual-allocation-option__title">
+              <span class="allocation-error-chip">
+                <span class="allocation-error-icon" aria-hidden="true">!</span>
+                <span>${escapeHtml(passengerModel.manualAllocation)}</span>
+              </span>
+            </span>
+            <span class="manual-allocation-option__meta">
+              Invalid assignment. This passenger is treated as unallocated.
+            </span>
+          </span>
+        </label>
+      `);
+    }
+
+    passengerModel.allocationOptions.eligibleAircraftNames.forEach((aircraft) => {
+      const checked = passengerModel.manualAllocationIsValid && passengerModel.manualAllocation === aircraft;
+      const className = checked
+        ? "manual-allocation-option manual-allocation-option--assigned"
+        : "manual-allocation-option";
+
+      options.push(`
+        <label class="${className}">
+          <input
+            type="checkbox"
+            data-field="manualAllocation"
+            data-passenger-index="${passengerModel.index}"
+            value="${escapeAttribute(aircraft)}"
+            ${checked ? "checked" : ""}
+          >
+          <span class="manual-allocation-option__content">
+            <span class="manual-allocation-option__title">${escapeHtml(aircraft)}</span>
+            <span class="manual-allocation-option__meta">
+              ${checked ? "Assigned aircraft" : "Select this aircraft"}
+            </span>
+          </span>
+        </label>
+      `);
+    });
+
+    if (!options.length) {
+      return `
+        <div class="manual-allocation-cell">
+          <span class="manual-allocation-note">${escapeHtml(passengerModel.allocationOptions.reason || "No eligible aircraft")}</span>
+        </div>
+      `;
+    }
+
+    const detailNote = passengerModel.manualAllocation && !passengerModel.manualAllocationIsValid
+      ? `<span class="manual-allocation-note manual-allocation-note--danger">${escapeHtml(passengerModel.allocationOptions.reason || "No eligible aircraft")}</span>`
+      : "";
+
+    return `
+      <div class="manual-allocation-cell">
+        ${options.join("")}
+        ${detailNote}
+      </div>
+    `;
+  }
+
+  function buildAllocationCounts(selectedAircraftNames, passengerModels, assignmentByPassenger) {
+    const counts = Object.fromEntries(selectedAircraftNames.map((aircraft) => [aircraft, 0]));
+    let unallocatedCount = 0;
+
+    passengerModels.forEach((passenger) => {
+      const assignedAircraft = assignmentByPassenger[passenger.index];
+
+      if (assignedAircraft && Object.prototype.hasOwnProperty.call(counts, assignedAircraft)) {
+        counts[assignedAircraft] += 1;
+      } else {
+        unallocatedCount += 1;
+      }
+    });
+
+    return selectedAircraftNames
+      .map((aircraft) => ({
+        key: aircraft,
+        label: aircraft,
+        count: counts[aircraft]
+      }))
+      .concat({
+        key: "unallocated",
+        label: "Unallocated",
+        count: unallocatedCount
+      });
+  }
+
+  function buildAllocationSections(selectedAircraftNames, configsByAircraft, passengerModels, assignmentByPassenger, allocationType) {
+    const rowsByAircraft = Object.fromEntries(selectedAircraftNames.map((aircraft) => [aircraft, []]));
+    const unallocatedRows = [];
+
+    passengerModels.forEach((passenger) => {
+      const row = {
+        passenger: passenger.name,
+        requiredBallast: passenger.requiredBallast,
+        permittedBallast: passenger.permittedBallast,
+        notes: buildAllocationSectionNotes(passenger, assignmentByPassenger[passenger.index], allocationType)
+      };
+      const assignedAircraft = assignmentByPassenger[passenger.index];
+
+      if (assignedAircraft && Object.prototype.hasOwnProperty.call(rowsByAircraft, assignedAircraft)) {
+        rowsByAircraft[assignedAircraft].push(row);
+      } else {
+        unallocatedRows.push(row);
+      }
+    });
+
+    return selectedAircraftNames
+      .map((aircraft) => {
+        const config = configsByAircraft[aircraft] || createAircraftConfig();
+
+        return {
+          key: aircraft,
+          label: aircraft,
+          commanderName: (config.commanderName || "").trim(),
+          ballastLabel: getPdfBallastLabel(config.ballastCount),
+          rows: rowsByAircraft[aircraft]
+        };
+      })
+      .concat({
+        key: "unallocated",
+        label: "Unallocated",
+        commanderName: "",
+        ballastLabel: "",
+        rows: unallocatedRows
+      });
+  }
+
+  function buildAllocationSectionNotes(passengerModel, assignedAircraft, allocationType) {
+    const notes = [passengerModel.notes];
+
+    if (!assignedAircraft && passengerModel.allocationOptions.status === "no-eligible-aircraft") {
+      notes.push("No eligible aircraft");
+    }
+
+    if (!assignedAircraft && allocationType === "manual-allocation") {
+      if (passengerModel.manualAllocation && !passengerModel.manualAllocationIsValid) {
+        notes.push(`Invalid manual allocation: ${passengerModel.manualAllocation}`);
+      } else if (passengerModel.allocationOptions.eligibleAircraftNames.length > 0) {
+        notes.push("No manual allocation selected");
+      }
+    }
+
+    return notes.filter(Boolean).join(". ");
+  }
+
+  function buildAllocationSectionHeading(section) {
+    if (section.key === "unallocated") {
+      return `${section.label} (${section.rows.length} passengers)`;
+    }
+
+    const headingParts = [section.label];
+
+    if (section.commanderName) {
+      headingParts.push(section.commanderName);
+    }
+
+    if (section.ballastLabel) {
+      headingParts.push(section.ballastLabel);
+    }
+
+    return `${headingParts.join(" - ")} (${section.rows.length} passengers)`;
   }
 
   function calculateSingleModel(singleState, aircraftData) {
@@ -894,7 +1588,7 @@
       aum,
       aumStatus: getSingleAumStatus(aum),
       frontSeatStatus: getFrontSeatStatus(passenger),
-      ballastStatus: getSingleBallastStatus(passenger),
+      ballastStatus: getSingleBallastStatus(passenger, ballastCount),
       approachSpeed: getApproachSpeed(aum)
     };
   }
@@ -914,7 +1608,7 @@
   }
 
   function getFrontSeatStatus(passengerWeight) {
-    if (passengerWeight < 55) {
+    if (passengerWeight < FRONT_SEAT_MIN_WEIGHT) {
       return {
         tone: "danger",
         text: "Front seat minimum weight NOT met"
@@ -927,29 +1621,25 @@
     };
   }
 
-  function getSingleBallastStatus(passengerWeight) {
-    if (passengerWeight < 42) {
-      return { tone: "danger", text: "PASSENGER TOO LIGHT TO FLY" };
+  function getSingleBallastStatus(passengerWeight, ballastCount) {
+    const rule = getPassengerBallastRule(passengerWeight);
+    const baseStatus = rule ? { ...rule.single } : { ...PASSENGER_BALLAST_RULES[0].single };
+
+    if (!Number.isFinite(passengerWeight) || passengerWeight <= 0) {
+      return baseStatus;
     }
-    if (passengerWeight < 55) {
-      return { tone: "warning", text: "PASSENGER IN REAR SEAT ONLY" };
+
+    const summary = buildBallastSummary(passengerWeight);
+    const selectedBallastCount = Number(ballastCount || 0);
+
+    if (summary.allowedBallastCounts.length && !summary.allowedBallastCounts.includes(selectedBallastCount)) {
+      return {
+        tone: "danger",
+        text: getInvalidSingleBallastMessage(summary)
+      };
     }
-    if (passengerWeight < 64) {
-      return { tone: "warning", text: "TWO Ballast weights MUST be fitted" };
-    }
-    if (passengerWeight < 70) {
-      return { tone: "warning", text: "at least ONE Ballast weight MUST be fitted" };
-    }
-    if (passengerWeight < 96) {
-      return { tone: "success", text: "Ballast not required, but 1 or 2 may be fitted" };
-    }
-    if (passengerWeight < 104) {
-      return { tone: "success", text: "Ballast not required, but 1 may be fitted" };
-    }
-    if (passengerWeight < 111) {
-      return { tone: "danger", text: "Ballast weights are NOT PERMITTED" };
-    }
-    return { tone: "danger", text: "PASSENGER TOO HEAVY TO FLY" };
+
+    return baseStatus;
   }
 
   function buildBallastSummary(weight) {
@@ -963,95 +1653,88 @@
       };
     }
 
-    if (weight < 42) {
-      return {
-        required: "N/A",
-        permitted: "0",
-        status: "Passenger too light to fly",
-        code: "too-light",
-        allowedBallastCounts: []
-      };
+    const rule = getPassengerBallastRule(weight);
+    return rule ? { ...rule.summary } : { ...PASSENGER_BALLAST_RULES[PASSENGER_BALLAST_RULES.length - 1].summary };
+  }
+
+  function getPassengerBallastRule(weight) {
+    if (!Number.isFinite(weight) || weight < 0) {
+      return null;
     }
 
-    if (weight < 55) {
-      return {
-        required: "N/A",
-        permitted: "N/A",
-        status: "Rear seat only",
-        code: "rear-only",
-        allowedBallastCounts: []
-      };
+    if (weight > OVERWEIGHT_LIMIT) {
+      return PASSENGER_BALLAST_RULES[PASSENGER_BALLAST_RULES.length - 1];
     }
 
-    if (weight < 64) {
-      return {
-        required: "2",
-        permitted: "2",
-        status: "Two ballast weights must be fitted",
-        code: "must-use-two",
-        allowedBallastCounts: [2]
-      };
+    return PASSENGER_BALLAST_RULES.find((rule) => weight >= rule.min && weight < rule.max) || null;
+  }
+
+  function getInvalidSingleBallastMessage(summary) {
+    if (summary.code === "must-use-two") {
+      return "Selected ballast setting invalid. TWO ballast weights MUST be fitted";
     }
 
-    if (weight < 70) {
-      return {
-        required: "At least 1",
-        permitted: "1 or 2",
-        status: "At least one ballast weight must be fitted",
-        code: "must-use-one-or-two",
-        allowedBallastCounts: [1, 2]
-      };
+    if (summary.code === "must-use-one-or-two") {
+      return "Selected ballast setting invalid. At least ONE ballast weight MUST be fitted";
     }
 
-    if (weight < 96) {
-      return {
-        required: "0",
-        permitted: "0, 1, or 2",
-        status: "Ballast not required",
-        code: "ballast-optional-all",
-        allowedBallastCounts: [0, 1, 2]
-      };
+    if (summary.code === "ballast-optional-zero-or-one") {
+      return "Selected ballast setting invalid. Only 0 or 1 ballast weight may be fitted";
     }
 
-    if (weight < 104) {
-      return {
-        required: "0",
-        permitted: "0 or 1",
-        status: "Ballast not required",
-        code: "ballast-optional-zero-or-one",
-        allowedBallastCounts: [0, 1]
-      };
+    if (summary.code === "ballast-not-permitted") {
+      return "Selected ballast setting invalid. Ballast weights are NOT PERMITTED";
     }
 
-    if (weight < 111) {
-      return {
-        required: "0",
-        permitted: "0",
-        status: "Ballast not permitted",
-        code: "ballast-not-permitted",
-        allowedBallastCounts: [0]
-      };
-    }
+    return "Selected ballast setting invalid for this passenger weight";
+  }
 
+  function buildAuditReference() {
     return {
-      required: "N/A",
-      permitted: "0",
-      status: "Passenger too heavy to fly",
-      code: "too-heavy",
-      allowedBallastCounts: []
+      constants: {
+        maxAum: MAX_AUM,
+        seatMaximumWeight: MAX_WEIGHT,
+        commanderAllocationLimit: OVERWEIGHT_LIMIT,
+        frontSeatMinimumWeight: FRONT_SEAT_MIN_WEIGHT,
+        approachSpeedThreshold: APPROACH_SPEED_THRESHOLD,
+        approachSpeedBelowThreshold: APPROACH_SPEEDS.belowThreshold,
+        approachSpeedAtOrAboveThreshold: APPROACH_SPEEDS.thresholdOrAbove
+      },
+      ballastOptions: BALLAST_OPTIONS.map((option) => ({
+        label: option.label,
+        countLabel: getPdfBallastLabel(option.value),
+        countValue: Number(option.value),
+        mass: option.mass
+      })),
+      ballastRules: PASSENGER_BALLAST_RULES.map((rule) => ({
+        rangeLabel: rule.auditLabel,
+        required: rule.summary.required,
+        permitted: rule.summary.permitted,
+        summaryStatus: rule.summary.status,
+        singleStatus: rule.single.text,
+        allowedBallastCounts: rule.summary.allowedBallastCounts.slice()
+      })),
+      formulas: {
+        payload: "Payload = Aircraft Commander weight + Passenger weight + Ballast mass",
+        aum: "Aircraft All-Up Mass = Aircraft empty weight + Payload",
+        allocationAum: "Allocation check uses aircraft weight + commander weight + passenger weight + configured ballast mass",
+        allocationRule: "A passenger can only be allocated if the aircraft ballast setting is permitted for that passenger and the resulting all-up mass does not exceed the maximum allowed."
+      }
     };
   }
 
   function getValidAircraftConfigs(aircraftData, configsByAircraft, selectedAircraftNames) {
-    const selectedAircraftSet = new Set(selectedAircraftNames || []);
+    const aircraftByName = new Map(aircraftData.map((aircraft) => [aircraft.aircraft, aircraft]));
 
-    return aircraftData
-      .map((aircraft) => {
-        if (!selectedAircraftSet.has(aircraft.aircraft)) {
+    return (selectedAircraftNames || [])
+      .map((aircraftName) => {
+        const aircraft = aircraftByName.get(aircraftName);
+
+        if (!aircraft) {
           return null;
         }
 
-        const config = configsByAircraft[aircraft.aircraft];
+        const config = configsByAircraft[aircraftName];
         const validation = getAircraftConfigValidation(config);
 
         if (!config || !validation.valid) {
@@ -1061,6 +1744,7 @@
         return {
           aircraft: aircraft.aircraft,
           weight: aircraft.weight,
+          commanderName: (config.commanderName || "").trim(),
           commanderWeight: getNumericValue(config.commanderWeight),
           ballastCount: Number(config.ballastCount),
           ballastMass: getBallastMass(config.ballastCount)
@@ -1070,21 +1754,8 @@
   }
 
   function resolveAircraftAllocation(summary, passengerWeight, validConfigs) {
-    if (summary.code === "rear-only") {
-      return "Rear seat only";
-    }
-
-    if (summary.code === "no-weight" || summary.code === "too-light" || summary.code === "too-heavy") {
-      return "Not Allocatable";
-    }
-
-    const matches = validConfigs.filter((config) => {
-      const ballastAllowed = summary.allowedBallastCounts.includes(config.ballastCount);
-      const withinMassLimit = config.weight + config.commanderWeight + passengerWeight + config.ballastMass <= MAX_AUM;
-      return ballastAllowed && withinMassLimit;
-    });
-
-    return matches.length ? matches.map((config) => config.aircraft).join(", ") : "Not Allocatable";
+    const options = buildPassengerAllocationOptions(summary, passengerWeight, validConfigs);
+    return options.displayText;
   }
 
   function getAircraftConfigValidation(config) {
@@ -1142,11 +1813,6 @@
     card.classList.toggle("is-valid", validation.valid);
     card.classList.toggle("is-invalid", !validation.valid);
 
-    const ballastMassField = card.querySelector("[data-display='ballastMass']");
-    if (ballastMassField) {
-      ballastMassField.value = config.ballastCount === "" ? "Not set" : `${formatWeight(getBallastMass(config.ballastCount))} kg`;
-    }
-
     const validationNote = card.querySelector(".validation-note");
     if (validationNote) {
       validationNote.className = `validation-note ${validation.className}`.trim();
@@ -1157,7 +1823,8 @@
   function buildPassengerList(count) {
     return Array.from({ length: count }, (_, index) => ({
       name: `Pax${index + 1}`,
-      weight: "0"
+      weight: "0",
+      manualAllocation: ""
     }));
   }
 
@@ -1166,11 +1833,15 @@
 
     for (let index = 0; index < count; index += 1) {
       if (existing[index]) {
-        resized.push(existing[index]);
+        resized.push({
+          ...existing[index],
+          manualAllocation: existing[index].manualAllocation || ""
+        });
       } else {
         resized.push({
           name: `Pax${index + 1}`,
-          weight: "0"
+          weight: "0",
+          manualAllocation: ""
         });
       }
     }
@@ -1203,6 +1874,7 @@
 
   function createAircraftConfig() {
     return {
+      commanderName: "",
       commanderWeight: "",
       ballastCount: ""
     };
@@ -1314,8 +1986,26 @@
     return option ? option.label : "";
   }
 
+  function getPdfBallastLabel(ballastCount) {
+    if (String(ballastCount) === "0") {
+      return "No ballast weights";
+    }
+
+    if (String(ballastCount) === "1") {
+      return "One ballast weight";
+    }
+
+    if (String(ballastCount) === "2") {
+      return "Two ballast weights";
+    }
+
+    return "Ballast not set";
+  }
+
   function getApproachSpeed(aum) {
-    return aum < APPROACH_SPEED_THRESHOLD ? 55 : 60;
+    return aum < APPROACH_SPEED_THRESHOLD
+      ? APPROACH_SPEEDS.belowThreshold
+      : APPROACH_SPEEDS.thresholdOrAbove;
   }
 
   function formatWeight(value) {

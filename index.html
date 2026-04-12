@@ -113,7 +113,7 @@
                     id="singleCommanderInput"
                     type="number"
                     min="0"
-                    max="120"
+                    max="110"
                     step="1"
                     inputmode="decimal"
                     value="0"
@@ -126,7 +126,7 @@
                     id="singlePassengerInput"
                     type="number"
                     min="0"
-                    max="120"
+                    max="110"
                     step="1"
                     inputmode="decimal"
                     value="0"
@@ -272,6 +272,31 @@
                 <div>
                   <p class="card__eyebrow">Passenger ballast summary</p>
                   <h2>Output table</h2>
+                </div>
+              </div>
+              <div id="multiAllocationPanel" class="multi-allocation-panel" hidden>
+                <div class="field">
+                  <div class="field__header">
+                    <span>Allocation type</span>
+                  </div>
+                  <div
+                    id="multiAllocationTypeOptions"
+                    class="allocation-type-list"
+                    role="radiogroup"
+                    aria-label="Allocation type"
+                  ></div>
+                </div>
+
+                <div id="multiAllocationStats" class="allocation-stats" hidden></div>
+
+                <div id="manualAllocationActions" class="action-row" hidden>
+                  <button
+                    id="resetManualAllocationButton"
+                    class="button button--ghost"
+                    type="button"
+                  >
+                    Reset Manual Allocation
+                  </button>
                 </div>
               </div>
               <div id="multiSummaryTable" class="table-shell"></div>

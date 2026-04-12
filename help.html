@@ -16,6 +16,8 @@
     <link rel="manifest" href="www/site.webmanifest" />
     <link rel="stylesheet" href="assets/styles.css">
     <script defer src="assets/layout.js"></script>
+    <script defer src="assets/app.js"></script>
+    <script defer src="assets/help.js"></script>
   </head>
   <body>
     <div class="page-shell">
@@ -76,7 +78,9 @@
               <li>Alternative aircraft comparison for the same single-passenger payload.</li>
               <li>Multiple-passenger summary showing each passenger&apos;s ballast possibilities.</li>
               <li>Optional aircraft allocation using aircraft-specific commander and ballast settings.</li>
-              <li>PDF export of the multiple-passenger summary.</li>
+              <li>Allocation modes for all available aircraft, automatic balancing, or manual assignment.</li>
+              <li>Live passenger-count statistics for auto and manual allocation.</li>
+              <li>PDF export of the multiple-passenger summary and aircraft allocation breakdown.</li>
             </ul>
           </article>
 
@@ -106,9 +110,11 @@
               <li>Enter each passenger name and weight <u>with</u> parachute.</li>
               <li>
                 If required, enable <strong>Set Aircraft Ballasts</strong>, choose the available
-                aircraft, then enter each Aircraft Commander weight and ballast setting.
+                aircraft, then enter each Aircraft Commander name if needed, weight, and ballast setting.
               </li>
-              <li>Review the summary table for required ballast, permitted ballast, notes, and any aircraft allocation.</li>
+              <li>Select the allocation type above the output table.</li>
+              <li>Use Auto Allocate to balance passengers across eligible aircraft, or Manual Allocation to tick one eligible aircraft per passenger.</li>
+              <li>Review the summary table for required ballast, permitted ballast, notes, aircraft allocation, and passenger-count statistics.</li>
               <li>Use <strong>Download PDF</strong> if you need an exportable summary.</li>
             </ol>
           </article>
@@ -125,6 +131,17 @@
               <li>Passenger and commander weights are expected to include parachutes.</li>
               <li>Outputs depend on the aircraft data currently bundled with the app.</li>
             </ul>
+          </article>
+
+          <article class="card help-card help-card--wide">
+            <div class="card__header">
+              <div>
+                <p class="card__eyebrow">Calculation Logic</p>
+              </div>
+            </div>
+            <div id="auditLogicContent" class="help-logic">
+              <p class="helper-text">Loading calculation logic from the app rules...</p>
+            </div>
           </article>
 
           <article class="card help-card help-card--wide">
