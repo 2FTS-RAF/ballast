@@ -88,30 +88,6 @@ New aircraft entries or updates are intended to be submitted through the reposit
 - If the submitted data already matches the CSV, the issue is commented and no pull request is created.
 - After a successful automatic merge, the workflow sends a POST webhook with the merge details.
 
-### Webhook Setup
-
-The merge notification step requires these repository secrets:
-
-- `MERGE_SUCCESS_WEBHOOK_URL`: HTTPS endpoint that accepts a JSON `POST` when an aircraft submission pull request is merged
-- `MERGE_SUCCESS_WEBHOOK_API_KEY`: value sent in the `x-make-apikey` HTTP header with that webhook request
-
-To trigger a sample webhook manually, open the repository `Actions` tab, run the `Send test merge webhook` workflow, and leave the default `event_name` of `aircraft_submission_merged_test` unless your receiving automation specifically expects the production event value.
-
-The webhook payload includes:
-
-- `event`
-- `repository`
-- `repositoryFullName`
-- `aircraft`
-- `weightKg`
-- `submitterEmail`
-- `issueNumber`
-- `issueUrl`
-- `pullRequestNumber`
-- `pullRequestUrl`
-- `mergeCommitSha`
-- `mergedAt`
-
 ## How to Raise an Issue
 
 The repository currently uses a structured issue process rather than open blank issues.
@@ -120,14 +96,6 @@ The repository currently uses a structured issue process rather than open blank 
 - Check the tail number and weight carefully before submitting.
 - If the workflow cannot process the submission automatically, GitHub will comment on the issue with the reason.
 - For questions, feedback, or matters that are not aircraft data submissions, use the developer contact route below.
-
-## Developer Contact
-
-Developer: [Dr Bradley Kennedy](https://bradleykennedy.co.uk)
-
-Contact form: [https://bradleykennedy.co.uk/contact](https://bradleykennedy.co.uk/contact)
-
-The repository also includes a GitHub contact link for non-submission questions through the issue page.
 
 ## Operational Disclaimer
 
