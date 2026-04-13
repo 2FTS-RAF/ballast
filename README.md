@@ -86,7 +86,7 @@ New aircraft entries or updates are intended to be submitted through the reposit
   - aircraft tail number matches `ZE` followed by exactly three digits
   - aircraft weight is numeric and between `380` and `500` kg
 - If the submitted data already matches the CSV, the issue is commented and no pull request is created.
-- After a successful automatic merge, the workflow sends a POST webhook with the merge details.
+- After a successful automatic merge, the workflow explicitly closes the linked issue and sends a POST webhook with the merge details.
 
 ## How to Raise an Issue
 

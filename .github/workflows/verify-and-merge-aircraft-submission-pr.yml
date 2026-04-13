@@ -43,12 +43,12 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Gather pull request context
         id: gather_pr
@@ -211,8 +211,23 @@ jobs:
               pull_number: Number(process.env.PULL_REQUEST_NUMBER),
               merge_method: 'squash',
               commit_title: `Sync aircraft ${process.env.AIRCRAFT} from issue #${process.env.ISSUE_NUMBER}`,
+              commit_message: `Closes #${process.env.ISSUE_NUMBER}`,
             });
             return response.data.sha;
+
+      - name: Close linked issue
+        uses: actions/github-script@v9
+        env:
+          ISSUE_NUMBER: ${{ steps.verify_pr.outputs.issue_number }}
+          PULL_REQUEST_NUMBER: ${{ steps.gather_pr.outputs.pull_request_number }}
+        with:
+          script: |
+            await github.rest.issues.update({
+              ...context.repo,
+              issue_number: Number(process.env.ISSUE_NUMBER),
+              state: 'closed',
+              state_reason: 'completed',
+            });
 
       - name: Send merge webhook
         run: node scripts/send-merge-webhook.mjs
