@@ -8,6 +8,15 @@ on:
       - reopened
       - synchronize
       - ready_for_review
+  repository_dispatch:
+    types:
+      - verify-aircraft-submission-pr
+  workflow_dispatch:
+    inputs:
+      pull_request_number:
+        description: Pull request number to verify and merge
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -15,24 +24,26 @@ permissions:
   issues: write
 
 concurrency:
-  group: aircraft-submission-pr-${{ github.event.pull_request.number }}
+  group: aircraft-submission-pr-${{ github.event.pull_request.number || github.event.client_payload.pull_request_number || inputs.pull_request_number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   verify-and-merge:
     if: >
-      github.event.pull_request.draft == false &&
-      startsWith(github.head_ref, 'automation/add-aircraft-') &&
-      github.event.pull_request.base.ref == github.event.repository.default_branch &&
-      github.event.pull_request.base.repo.full_name == github.repository &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      (github.event_name == 'pull_request_target' &&
+       github.event.pull_request.draft == false &&
+       startsWith(github.head_ref, 'automation/add-aircraft-') &&
+       github.event.pull_request.base.ref == github.event.repository.default_branch &&
+       github.event.pull_request.base.repo.full_name == github.repository &&
+       github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'repository_dispatch' &&
+       startsWith(github.event.client_payload.pull_request_head_ref, 'automation/add-aircraft-')) ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out base branch
+      - name: Check out repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -40,21 +51,43 @@ jobs:
           node-version: 20
 
       - name: Gather pull request context
+        id: gather_pr
         uses: actions/github-script@v9
         env:
           CONTEXT_PATH: ${{ runner.temp }}/aircraft-pr-context.json
           CSV_PATH: assets/aircraft_weights.csv
-          PR_BODY: ${{ github.event.pull_request.body }}
-          PR_HEAD_REF: ${{ github.head_ref }}
+          TRIGGER_PR_NUMBER: ${{ github.event.pull_request.number || github.event.client_payload.pull_request_number || inputs.pull_request_number }}
         with:
           script: |
             const fs = require('fs');
             const path = require('path');
-            const pr = context.payload.pull_request;
-            const branchMatch = (process.env.PR_HEAD_REF || '').match(/^automation\/add-aircraft-(\d+)$/);
+            const prNumber = Number(process.env.TRIGGER_PR_NUMBER || 0);
+
+            if (!Number.isInteger(prNumber) || prNumber <= 0) {
+              throw new Error('A valid pull request number is required.');
+            }
+
+            const { data: pr } = await github.rest.pulls.get({
+              ...context.repo,
+              pull_number: prNumber,
+            });
+
+            if (pr.draft) {
+              throw new Error(`Pull request #${pr.number} is a draft and cannot be merged automatically.`);
+            }
+
+            const branchMatch = (pr.head.ref || '').match(/^automation\/add-aircraft-(\d+)$/);
 
             if (!branchMatch) {
               throw new Error('Pull request branch must match automation/add-aircraft-<issue-number>.');
+            }
+
+            if (pr.base.ref !== context.payload.repository.default_branch) {
+              throw new Error(`Pull request #${pr.number} must target ${context.payload.repository.default_branch}.`);
+            }
+
+            if (pr.base.repo.full_name !== process.env.GITHUB_REPOSITORY || pr.head.repo.full_name !== process.env.GITHUB_REPOSITORY) {
+              throw new Error(`Pull request #${pr.number} must use branches inside ${process.env.GITHUB_REPOSITORY}.`);
             }
 
             const issueNumber = Number(branchMatch[1]);
@@ -67,14 +100,23 @@ jobs:
               pull_number: pr.number,
               per_page: 100,
             });
-            const { data: csvFile } = await github.rest.repos.getContent({
+            const { data: baseCsvFile } = await github.rest.repos.getContent({
+              ...context.repo,
+              path: process.env.CSV_PATH,
+              ref: pr.base.sha,
+            });
+            const { data: headCsvFile } = await github.rest.repos.getContent({
               ...context.repo,
               path: process.env.CSV_PATH,
               ref: pr.head.sha,
             });
 
-            if (Array.isArray(csvFile) || !csvFile.content) {
-              throw new Error(`Unable to read ${process.env.CSV_PATH} from ${pr.head.sha}.`);
+            if (Array.isArray(baseCsvFile) || !baseCsvFile.content) {
+              throw new Error(`Unable to read ${process.env.CSV_PATH} from base commit ${pr.base.sha}.`);
+            }
+
+            if (Array.isArray(headCsvFile) || !headCsvFile.content) {
+              throw new Error(`Unable to read ${process.env.CSV_PATH} from head commit ${pr.head.sha}.`);
             }
 
             fs.mkdirSync(path.dirname(process.env.CONTEXT_PATH), { recursive: true });
@@ -86,15 +128,19 @@ jobs:
                   issueLabels: (issue.labels || [])
                     .map((label) => (typeof label === 'string' ? label : label.name))
                     .filter(Boolean),
-                  prBody: process.env.PR_BODY || '',
-                  prHeadRef: process.env.PR_HEAD_REF || '',
+                  prBody: pr.body || '',
+                  prHeadRef: pr.head.ref || '',
                   changedFiles: files.map((file) => file.filename),
-                  headCsvContent: Buffer.from(csvFile.content, csvFile.encoding || 'base64').toString('utf8'),
+                  baseCsvContent: Buffer.from(baseCsvFile.content, baseCsvFile.encoding || 'base64').toString('utf8'),
+                  headCsvContent: Buffer.from(headCsvFile.content, headCsvFile.encoding || 'base64').toString('utf8'),
                 },
                 null,
                 2,
               ),
             );
+
+            core.setOutput('pull_request_number', String(pr.number));
+            core.setOutput('pull_request_url', pr.html_url);
 
       - name: Verify pull request contents
         id: verify_pr
@@ -109,6 +155,7 @@ jobs:
         uses: actions/github-script@v9
         env:
           ERROR_MESSAGE: ${{ steps.verify_pr.outputs.error_message }}
+          PULL_REQUEST_NUMBER: ${{ steps.gather_pr.outputs.pull_request_number }}
         with:
           script: |
             const marker = '<!-- aircraft-submission-verification -->';
@@ -121,7 +168,7 @@ jobs:
               '',
               'Update the linked issue or the generated branch and the verification will run again automatically.',
             ].join('\n');
-            const issueNumber = context.payload.pull_request.number;
+            const issueNumber = Number(process.env.PULL_REQUEST_NUMBER);
             const { data: comments } = await github.rest.issues.listComments({
               ...context.repo,
               issue_number: issueNumber,
@@ -155,13 +202,13 @@ jobs:
         env:
           AIRCRAFT: ${{ steps.verify_pr.outputs.aircraft }}
           ISSUE_NUMBER: ${{ steps.verify_pr.outputs.issue_number }}
+          PULL_REQUEST_NUMBER: ${{ steps.gather_pr.outputs.pull_request_number }}
         with:
           result-encoding: string
           script: |
-            const pr = context.payload.pull_request;
             const response = await github.rest.pulls.merge({
               ...context.repo,
-              pull_number: pr.number,
+              pull_number: Number(process.env.PULL_REQUEST_NUMBER),
               merge_method: 'squash',
               commit_title: `Sync aircraft ${process.env.AIRCRAFT} from issue #${process.env.ISSUE_NUMBER}`,
             });
@@ -180,6 +227,6 @@ jobs:
           WEIGHT_KG: ${{ steps.verify_pr.outputs.weight }}
           SUBMITTER_EMAIL: ${{ steps.verify_pr.outputs.submitter_email }}
           ISSUE_NUMBER: ${{ steps.verify_pr.outputs.issue_number }}
-          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
-          PULL_REQUEST_URL: ${{ github.event.pull_request.html_url }}
+          PULL_REQUEST_NUMBER: ${{ steps.gather_pr.outputs.pull_request_number }}
+          PULL_REQUEST_URL: ${{ steps.gather_pr.outputs.pull_request_url }}
           MERGE_COMMIT_SHA: ${{ steps.merge_pr.outputs.result }}

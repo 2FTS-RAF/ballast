@@ -25,7 +25,9 @@ export function main({
   csvPath = process.env.CSV_PATH || AIRCRAFT_CSV_PATH
 } = {}) {
   const context = loadContext(contextPath);
-  const baseCsvText = fs.readFileSync(csvPath, "utf8");
+  const baseCsvText = typeof context.baseCsvContent === "string"
+    ? context.baseCsvContent
+    : fs.readFileSync(csvPath, "utf8");
   const result = validateAircraftPullRequest({
     ...context,
     baseCsvText,
