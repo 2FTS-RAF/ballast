@@ -8,13 +8,14 @@ body:
     attributes:
       value: |
         Submit the aircraft details below and the repository automation will prepare a pull request to update `assets/aircraft_weights.csv`.
+        Automatic merge only happens when the email address uses an approved MOD domain, the tail number matches `ZE` followed by three digits, and the weight is between `380` and `500` kg.
 
   - type: input
     id: aircraft_tail_number
     attributes:
       label: Aircraft tail number
-      description: Use the tail number or aircraft label exactly as it should appear in the calculator.
-      placeholder: ZE999
+      description: Use `ZE` followed by exactly three digits, for example `ZE123`.
+      placeholder: ZE123
     validations:
       required: true
 
@@ -22,7 +23,7 @@ body:
     id: aircraft_weight
     attributes:
       label: Aircraft weight (kg)
-      description: Enter the aircraft weight in kilograms.
+      description: Enter a numeric aircraft weight between 380 and 500 kilograms.
       placeholder: "416.25"
     validations:
       required: true
@@ -31,8 +32,8 @@ body:
     id: submitter_email
     attributes:
       label: Submitter email
-      description: Provide an email address for the person submitting the aircraft details. This will be visible in the issue and any related pull request.
-      placeholder: name@example.com
+      description: Provide an approved RAFAC or MOD email address. This will be visible in the issue and any related pull request.
+      placeholder: name@rafac.mod.gov.uk
     validations:
       required: true
 

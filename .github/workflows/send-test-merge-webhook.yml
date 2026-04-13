@@ -1,0 +1,67 @@
+name: Send test merge webhook
+
+on:
+  workflow_dispatch:
+    inputs:
+      aircraft:
+        description: Aircraft tail number to include in the sample payload
+        required: true
+        default: ZE123
+        type: string
+      weight_kg:
+        description: Aircraft weight in kilograms
+        required: true
+        default: "416.25"
+        type: string
+      submitter_email:
+        description: Submitter email to include in the sample payload
+        required: true
+        default: pilot@rafac.mod.gov.uk
+        type: string
+      issue_number:
+        description: Issue number to include in the sample payload
+        required: true
+        default: "9999"
+        type: string
+      pull_request_number:
+        description: Pull request number to include in the sample payload
+        required: true
+        default: "9999"
+        type: string
+      event_name:
+        description: Event name sent in the payload
+        required: true
+        default: aircraft_submission_merged_test
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  send-test-webhook:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Send test merge webhook
+        run: node scripts/send-merge-webhook.mjs
+        env:
+          WEBHOOK_URL: ${{ secrets.MERGE_SUCCESS_WEBHOOK_URL }}
+          WEBHOOK_API_KEY: ${{ secrets.MERGE_SUCCESS_WEBHOOK_API_KEY }}
+          WEBHOOK_EVENT: ${{ inputs.event_name }}
+          REPOSITORY_NAME: ${{ github.event.repository.name }}
+          REPOSITORY_FULL_NAME: ${{ github.repository }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          AIRCRAFT: ${{ inputs.aircraft }}
+          WEIGHT_KG: ${{ inputs.weight_kg }}
+          SUBMITTER_EMAIL: ${{ inputs.submitter_email }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          PULL_REQUEST_NUMBER: ${{ inputs.pull_request_number }}
+          MERGE_COMMIT_SHA: 0000000000000000000000000000000000000000

@@ -1,0 +1,185 @@
+name: Verify and merge aircraft submission PR
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+      - ready_for_review
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: aircraft-submission-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify-and-merge:
+    if: >
+      github.event.pull_request.draft == false &&
+      startsWith(github.head_ref, 'automation/add-aircraft-') &&
+      github.event.pull_request.base.ref == github.event.repository.default_branch &&
+      github.event.pull_request.base.repo.full_name == github.repository &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Gather pull request context
+        uses: actions/github-script@v9
+        env:
+          CONTEXT_PATH: ${{ runner.temp }}/aircraft-pr-context.json
+          CSV_PATH: assets/aircraft_weights.csv
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_HEAD_REF: ${{ github.head_ref }}
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const pr = context.payload.pull_request;
+            const branchMatch = (process.env.PR_HEAD_REF || '').match(/^automation\/add-aircraft-(\d+)$/);
+
+            if (!branchMatch) {
+              throw new Error('Pull request branch must match automation/add-aircraft-<issue-number>.');
+            }
+
+            const issueNumber = Number(branchMatch[1]);
+            const { data: issue } = await github.rest.issues.get({
+              ...context.repo,
+              issue_number: issueNumber,
+            });
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              ...context.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+            const { data: csvFile } = await github.rest.repos.getContent({
+              ...context.repo,
+              path: process.env.CSV_PATH,
+              ref: pr.head.sha,
+            });
+
+            if (Array.isArray(csvFile) || !csvFile.content) {
+              throw new Error(`Unable to read ${process.env.CSV_PATH} from ${pr.head.sha}.`);
+            }
+
+            fs.mkdirSync(path.dirname(process.env.CONTEXT_PATH), { recursive: true });
+            fs.writeFileSync(
+              process.env.CONTEXT_PATH,
+              JSON.stringify(
+                {
+                  issueBody: issue.body || '',
+                  issueLabels: (issue.labels || [])
+                    .map((label) => (typeof label === 'string' ? label : label.name))
+                    .filter(Boolean),
+                  prBody: process.env.PR_BODY || '',
+                  prHeadRef: process.env.PR_HEAD_REF || '',
+                  changedFiles: files.map((file) => file.filename),
+                  headCsvContent: Buffer.from(csvFile.content, csvFile.encoding || 'base64').toString('utf8'),
+                },
+                null,
+                2,
+              ),
+            );
+
+      - name: Verify pull request contents
+        id: verify_pr
+        continue-on-error: true
+        run: node scripts/verify-aircraft-pr.mjs
+        env:
+          CSV_PATH: assets/aircraft_weights.csv
+          PR_CONTEXT_PATH: ${{ runner.temp }}/aircraft-pr-context.json
+
+      - name: Comment on failed verification
+        if: steps.verify_pr.outcome != 'success'
+        uses: actions/github-script@v9
+        env:
+          ERROR_MESSAGE: ${{ steps.verify_pr.outputs.error_message }}
+        with:
+          script: |
+            const marker = '<!-- aircraft-submission-verification -->';
+            const reason = process.env.ERROR_MESSAGE || 'Automatic verification failed.';
+            const body = [
+              marker,
+              'This pull request could not be approved for automatic merge.',
+              '',
+              `Reason: ${reason}`,
+              '',
+              'Update the linked issue or the generated branch and the verification will run again automatically.',
+            ].join('\n');
+            const issueNumber = context.payload.pull_request.number;
+            const { data: comments } = await github.rest.issues.listComments({
+              ...context.repo,
+              issue_number: issueNumber,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) =>
+              comment.user?.login === 'github-actions[bot]' && comment.body?.includes(marker),
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                ...context.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: issueNumber,
+                body,
+              });
+            }
+
+      - name: Stop after failed verification
+        if: steps.verify_pr.outcome != 'success'
+        run: exit 1
+
+      - name: Merge verified pull request
+        id: merge_pr
+        uses: actions/github-script@v9
+        env:
+          AIRCRAFT: ${{ steps.verify_pr.outputs.aircraft }}
+          ISSUE_NUMBER: ${{ steps.verify_pr.outputs.issue_number }}
+        with:
+          result-encoding: string
+          script: |
+            const pr = context.payload.pull_request;
+            const response = await github.rest.pulls.merge({
+              ...context.repo,
+              pull_number: pr.number,
+              merge_method: 'squash',
+              commit_title: `Sync aircraft ${process.env.AIRCRAFT} from issue #${process.env.ISSUE_NUMBER}`,
+            });
+            return response.data.sha;
+
+      - name: Send merge webhook
+        run: node scripts/send-merge-webhook.mjs
+        env:
+          WEBHOOK_URL: ${{ secrets.MERGE_SUCCESS_WEBHOOK_URL }}
+          WEBHOOK_API_KEY: ${{ secrets.MERGE_SUCCESS_WEBHOOK_API_KEY }}
+          WEBHOOK_EVENT: aircraft_submission_merged
+          REPOSITORY_NAME: ${{ github.event.repository.name }}
+          REPOSITORY_FULL_NAME: ${{ github.repository }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          AIRCRAFT: ${{ steps.verify_pr.outputs.aircraft }}
+          WEIGHT_KG: ${{ steps.verify_pr.outputs.weight }}
+          SUBMITTER_EMAIL: ${{ steps.verify_pr.outputs.submitter_email }}
+          ISSUE_NUMBER: ${{ steps.verify_pr.outputs.issue_number }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+          PULL_REQUEST_URL: ${{ github.event.pull_request.html_url }}
+          MERGE_COMMIT_SHA: ${{ steps.merge_pr.outputs.result }}

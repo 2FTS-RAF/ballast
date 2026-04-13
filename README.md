@@ -81,7 +81,36 @@ New aircraft entries or updates are intended to be submitted through the reposit
 - You provide the aircraft tail number, aircraft weight in kilograms, and a submitter email address.
 - A GitHub Actions workflow processes the submission.
 - If a change is required, the automation opens a pull request to update `assets/aircraft_weights.csv`.
+- The generated pull request is automatically verified and merged when all of these checks pass:
+  - submitter email domain is `rafac.mod.gov.uk` or `mod.gov.uk`
+  - aircraft tail number matches `ZE` followed by exactly three digits
+  - aircraft weight is numeric and between `380` and `500` kg
 - If the submitted data already matches the CSV, the issue is commented and no pull request is created.
+- After a successful automatic merge, the workflow sends a POST webhook with the merge details.
+
+### Webhook Setup
+
+The merge notification step requires these repository secrets:
+
+- `MERGE_SUCCESS_WEBHOOK_URL`: HTTPS endpoint that accepts a JSON `POST` when an aircraft submission pull request is merged
+- `MERGE_SUCCESS_WEBHOOK_API_KEY`: value sent in the `x-make-apikey` HTTP header with that webhook request
+
+To trigger a sample webhook manually, open the repository `Actions` tab, run the `Send test merge webhook` workflow, and leave the default `event_name` of `aircraft_submission_merged_test` unless your receiving automation specifically expects the production event value.
+
+The webhook payload includes:
+
+- `event`
+- `repository`
+- `repositoryFullName`
+- `aircraft`
+- `weightKg`
+- `submitterEmail`
+- `issueNumber`
+- `issueUrl`
+- `pullRequestNumber`
+- `pullRequestUrl`
+- `mergeCommitSha`
+- `mergedAt`
 
 ## How to Raise an Issue
 
