@@ -21,7 +21,7 @@
   ];
   const TRIPETTO_FORM_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiTFQ1V2JpNWZ3b0t2VkxMZWJqZ0dBVlZJMXY5K2MrazI0N3d5VjNRK2t6WT0iLCJkZWZpbml0aW9uIjoiK2V1cDBzVUhwOHpQUHhsOGlzTmxxVk5EVGtwZUh4S3pjenM0UEwvcDJhWT0iLCJ0eXBlIjoiY29sbGVjdCJ9.W16S1Nbg-kifLN4lm86MnbgZJmcluvEUYAJBfGdglrw";
   const AIRCRAFT_LOCATIONS = [
-    "Honnington",
+    "Honington",
     "Kenley",
     "Kirknewton",
     "Little Rissington",

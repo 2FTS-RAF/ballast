@@ -3,7 +3,7 @@ export const AUTOMATION_BRANCH_PREFIX = "automation/add-aircraft-";
 export const AIRCRAFT_CSV_PATH = "assets/aircraft_weights.csv";
 export const ALLOWED_EMAIL_DOMAINS = ["rafac.mod.gov.uk", "mod.gov.uk"];
 export const ALLOWED_LOCATIONS = [
-  "Honnington",
+  "Honington",
   "Kenley",
   "Kirknewton",
   "Little Rissington",

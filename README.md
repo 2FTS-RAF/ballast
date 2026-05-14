@@ -86,7 +86,7 @@ New aircraft entries or updates are intended to be submitted through the reposit
 - The generated pull request is automatically verified and merged when all of these checks pass:
   - submitter email domain is `rafac.mod.gov.uk` or `mod.gov.uk`
   - aircraft tail number matches `ZE` followed by exactly three digits
-  - location is one of `Honnington`, `Kenley`, `Kirknewton`, `Little Rissington`, `Predannack`, `Syerston`, `Topcliffe`, `Upavon`, or `Woodvale`
+  - location is one of `Honington`, `Kenley`, `Kirknewton`, `Little Rissington`, `Predannack`, `Syerston`, `Topcliffe`, `Upavon`, or `Woodvale`
   - aircraft weight is numeric and between `380` and `500` kg
 - If the submitted data already matches the CSV, the issue is commented and no pull request is created.
 - After a successful automatic merge, the workflow explicitly closes the linked issue and sends a POST webhook with the merge details.

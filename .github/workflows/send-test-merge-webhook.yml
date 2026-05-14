@@ -19,7 +19,7 @@ on:
         default: Kenley
         type: choice
         options:
-          - Honnington
+          - Honington
           - Kenley
           - Kirknewton
           - Little Rissington

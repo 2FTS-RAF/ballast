@@ -35,7 +35,7 @@ body:
       label: Location
       description: Select the aircraft's current airfield.
       options:
-        - Honnington
+        - Honington
         - Kenley
         - Kirknewton
         - Little Rissington
