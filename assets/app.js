@@ -20,6 +20,17 @@
     "https://cdn.jsdelivr.net/npm/@tripetto/studio"
   ];
   const TRIPETTO_FORM_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiTFQ1V2JpNWZ3b0t2VkxMZWJqZ0dBVlZJMXY5K2MrazI0N3d5VjNRK2t6WT0iLCJkZWZpbml0aW9uIjoiK2V1cDBzVUhwOHpQUHhsOGlzTmxxVk5EVGtwZUh4S3pjenM0UEwvcDJhWT0iLCJ0eXBlIjoiY29sbGVjdCJ9.W16S1Nbg-kifLN4lm86MnbgZJmcluvEUYAJBfGdglrw";
+  const AIRCRAFT_LOCATIONS = [
+    "Honnington",
+    "Kenley",
+    "Kirknewton",
+    "Little Rissington",
+    "Predannack",
+    "Syerston",
+    "Topcliffe",
+    "Upavon",
+    "Woodvale"
+  ];
   const BALLAST_OPTIONS = [
     { value: "0", label: "None", mass: 0 },
     { value: "1", label: "One", mass: 7 },
@@ -200,6 +211,7 @@
 
   const state = {
     aircraftData: [],
+    locationFilter: "",
     mode: "single",
     single: {
       aircraft: "",
@@ -252,6 +264,7 @@
     elements.retryLoadButton = document.getElementById("retryLoadButton");
     elements.statusBanner = document.getElementById("statusBanner");
     elements.addAircraftButton = document.getElementById("addAircraftButton");
+    elements.locationFilterSelect = document.getElementById("locationFilterSelect");
     elements.modeSingleButton = document.getElementById("modeSingleButton");
     elements.modeMultiButton = document.getElementById("modeMultiButton");
     elements.singleModePanel = document.getElementById("singleModePanel");
@@ -290,6 +303,7 @@
   function bindEvents() {
     elements.retryLoadButton.addEventListener("click", loadAircraftData);
     elements.addAircraftButton.addEventListener("click", openAircraftSubmissionModal);
+    elements.locationFilterSelect.addEventListener("change", handleLocationFilterChange);
     elements.aircraftSubmissionCloseButton.addEventListener("click", closeAircraftSubmissionModal);
     elements.aircraftSubmissionModal.addEventListener("click", handleAircraftSubmissionModalClick);
     if (elements.homeScreenPromptDismiss) {
@@ -448,6 +462,16 @@
     renderPassengerInputs();
     renderAircraftPicker();
     renderAircraftConfigSection();
+    renderMultiSummary();
+  }
+
+  function handleLocationFilterChange(event) {
+    state.locationFilter = event.target.value;
+    syncSelectionsWithLocationFilter();
+    renderSingleAircraftOptions();
+    renderAircraftPicker();
+    renderAircraftConfigSection();
+    renderSingleOutputs();
     renderMultiSummary();
   }
 
@@ -617,7 +641,17 @@
   }
 
   function renderSingleAircraftOptions() {
-    const optionsHtml = state.aircraftData
+    const aircraftData = getFilteredAircraftData();
+
+    if (!aircraftData.length) {
+      elements.singleAircraftSelect.disabled = true;
+      elements.singleAircraftSelect.innerHTML = `<option value="">No aircraft for selected location</option>`;
+      return;
+    }
+
+    elements.singleAircraftSelect.disabled = false;
+
+    const optionsHtml = aircraftData
       .map((aircraft) => {
         const selected = aircraft.aircraft === state.single.aircraft ? " selected" : "";
         return `<option value="${escapeHtml(aircraft.aircraft)}"${selected}>${escapeHtml(aircraft.aircraft)}</option>`;
@@ -631,7 +665,7 @@
   }
 
   function renderSingleOutputs() {
-    const model = calculateSingleModel(state.single, state.aircraftData);
+    const model = calculateSingleModel(state.single, getFilteredAircraftData());
 
     elements.singleCalculations.innerHTML = [
       renderMetric("Aircraft Commander (with para)", `${formatWeight(model.commander)} kg`, model.commander > OVERWEIGHT_LIMIT ? `Overweight for flight at ${formatWeight(model.commander)} kg.` : "", model.commander > OVERWEIGHT_LIMIT),
@@ -653,17 +687,20 @@
   }
 
   function renderAlternativeAircraftTable(payload) {
-    if (!state.aircraftData.length) {
-      elements.altAircraftTable.innerHTML = `<div class="empty-state">Aircraft data is not available.</div>`;
+    const aircraftData = getFilteredAircraftData();
+
+    if (!aircraftData.length) {
+      elements.altAircraftTable.innerHTML = `<div class="empty-state">No aircraft match the selected location.</div>`;
       return;
     }
 
-    const rows = state.aircraftData
+    const rows = aircraftData
       .map((aircraft) => {
         const overweight = payload > aircraft.maxPayload;
         return `
           <tr>
             <td>${escapeHtml(aircraft.aircraft)}</td>
+            <td>${escapeHtml(aircraft.location || "Not set")}</td>
             <td>${formatWeight(aircraft.weight)} kg</td>
             <td>${formatWeight(aircraft.maxPayload)} kg</td>
             <td><span class="pill ${overweight ? "pill--alert" : "pill--ok"}">${overweight ? "TRUE" : "FALSE"}</span></td>
@@ -677,6 +714,7 @@
         <thead>
           <tr>
             <th>Tail No</th>
+            <th>Location</th>
             <th>A/C Weight</th>
             <th>Max Payload</th>
             <th>Overweight?</th>
@@ -731,7 +769,7 @@
       return;
     }
 
-    const cards = state.aircraftData
+    const cards = getFilteredAircraftData()
       .filter((aircraft) => selectedAircraft.includes(aircraft.aircraft))
       .map((aircraft) => {
         const config = state.multi.aircraftConfigs[aircraft.aircraft] || createAircraftConfig();
@@ -805,7 +843,15 @@
     }
 
     const selectedAircraft = getSelectedAircraftNames(state.multi);
-    elements.multiAircraftPickerList.innerHTML = state.aircraftData
+    const aircraftData = getFilteredAircraftData();
+
+    if (!aircraftData.length) {
+      elements.multiAircraftSelectionCount.textContent = "0 aircraft selected";
+      elements.multiAircraftPickerList.innerHTML = `<div class="empty-state">No aircraft match the selected location.</div>`;
+      return;
+    }
+
+    elements.multiAircraftPickerList.innerHTML = aircraftData
       .map((aircraft) => {
         const checked = selectedAircraft.includes(aircraft.aircraft) ? "checked" : "";
 
@@ -817,7 +863,7 @@
               ${checked}
             >
             <span class="aircraft-picker__name">${escapeHtml(aircraft.aircraft)}</span>
-            <span class="aircraft-picker__meta">${formatWeight(aircraft.weight)} kg</span>
+            <span class="aircraft-picker__meta">${formatAircraftMeta(aircraft)}</span>
           </label>
         `;
       })
@@ -1850,13 +1896,15 @@
   }
 
   function seedSingleAircraftSelection() {
-    if (!state.aircraftData.length) {
+    const aircraftData = getFilteredAircraftData();
+
+    if (!aircraftData.length) {
       state.single.aircraft = "";
       return;
     }
 
-    const existing = state.aircraftData.find((aircraft) => aircraft.aircraft === state.single.aircraft);
-    state.single.aircraft = existing ? existing.aircraft : state.aircraftData[0].aircraft;
+    const existing = aircraftData.find((aircraft) => aircraft.aircraft === state.single.aircraft);
+    state.single.aircraft = existing ? existing.aircraft : aircraftData[0].aircraft;
   }
 
   function seedAircraftConfigs(reset) {
@@ -1882,6 +1930,25 @@
 
   function getSelectedAircraftNames(multiState) {
     return Array.isArray(multiState.selectedAircraft) ? multiState.selectedAircraft : [];
+  }
+
+  function syncSelectionsWithLocationFilter() {
+    const visibleAircraftNames = new Set(getFilteredAircraftData().map((aircraft) => aircraft.aircraft));
+
+    if (!visibleAircraftNames.has(state.single.aircraft)) {
+      seedSingleAircraftSelection();
+    }
+
+    state.multi.selectedAircraft = getSelectedAircraftNames(state.multi)
+      .filter((aircraft) => visibleAircraftNames.has(aircraft));
+  }
+
+  function getFilteredAircraftData() {
+    if (!state.locationFilter) {
+      return state.aircraftData;
+    }
+
+    return state.aircraftData.filter((aircraft) => aircraft.location === state.locationFilter);
   }
 
   function showLoadState({ eyebrow, title, message, canRetry }) {
@@ -2116,11 +2183,28 @@
         return {
           aircraft,
           weight,
+          location: normaliseLocation(row.location),
+          submitterEmail: (row.submitterEmail || "").trim(),
           maxPayload: Number((MAX_AUM - weight).toFixed(2))
         };
       })
       .filter(Boolean)
       .sort((left, right) => left.aircraft.localeCompare(right.aircraft, undefined, { numeric: true, sensitivity: "base" }));
+  }
+
+  function normaliseLocation(value) {
+    const location = String(value || "").trim();
+    return AIRCRAFT_LOCATIONS.find((item) => item.toLowerCase() === location.toLowerCase()) || "";
+  }
+
+  function formatAircraftMeta(aircraft) {
+    const parts = [`${formatWeight(aircraft.weight)} kg`];
+
+    if (aircraft.location) {
+      parts.push(aircraft.location);
+    }
+
+    return parts.join(" - ");
   }
 
   function escapeHtml(value) {

@@ -37,6 +37,7 @@ export function buildWebhookPayload({
   repositoryFullName,
   aircraft,
   weightKg,
+  location,
   submitterEmail,
   issueNumber,
   issueUrl,
@@ -51,6 +52,7 @@ export function buildWebhookPayload({
     repositoryFullName,
     aircraft,
     weightKg,
+    location,
     submitterEmail,
     issueNumber,
     issueUrl,
@@ -70,6 +72,7 @@ export function loadConfig(env) {
   const serverUrl = env.GITHUB_SERVER_URL || "https://github.com";
   const aircraft = requireEnv(env, "AIRCRAFT");
   const weightKg = parseNumberEnv(env, "WEIGHT_KG");
+  const location = requireEnv(env, "LOCATION");
   const submitterEmail = requireEnv(env, "SUBMITTER_EMAIL");
   const issueNumber = parseNumberEnv(env, "ISSUE_NUMBER");
   const pullRequestNumber = parseNumberEnv(env, "PULL_REQUEST_NUMBER");
@@ -84,6 +87,7 @@ export function loadConfig(env) {
     repositoryFullName,
     aircraft,
     weightKg,
+    location,
     submitterEmail,
     issueNumber,
     issueUrl: env.ISSUE_URL || `${serverUrl}/${repositoryFullName}/issues/${issueNumber}`,

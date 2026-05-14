@@ -64,6 +64,7 @@ jobs:
         env:
           AIRCRAFT: ${{ steps.process_issue.outputs.aircraft }}
           WEIGHT: ${{ steps.process_issue.outputs.weight }}
+          LOCATION: ${{ steps.process_issue.outputs.location }}
         with:
           script: |
             const issue_number = context.issue.number;
@@ -71,12 +72,13 @@ jobs:
             const owner = context.repo.owner;
             const aircraft = process.env.AIRCRAFT;
             const weight = process.env.WEIGHT;
+            const location = process.env.LOCATION;
 
             await github.rest.issues.createComment({
               owner,
               repo,
               issue_number,
-              body: `No update was needed. \`${aircraft}\` is already recorded at \`${weight} kg\` in \`assets/aircraft_weights.csv\`.`
+              body: `No update was needed. \`${aircraft}\` is already recorded at \`${weight} kg\` in \`${location}\` with the same submitter email in \`assets/aircraft_weights.csv\`.`
             });
 
       - name: Create pull request for aircraft data update
@@ -94,6 +96,7 @@ jobs:
             Change type: `${{ steps.process_issue.outputs.change_action }}`
             Aircraft: `${{ steps.process_issue.outputs.aircraft }}`
             Weight: `${{ steps.process_issue.outputs.weight }} kg`
+            Location: `${{ steps.process_issue.outputs.location }}`
             Submitter email: `${{ steps.process_issue.outputs.submitter_email }}`
 
             Closes #${{ github.event.issue.number }}

@@ -140,6 +140,7 @@ a {
 .hero__links {
   display: flex;
   flex-wrap: wrap;
+  align-items: end;
   gap: 0.65rem;
 }
 
@@ -363,6 +364,15 @@ main {
 .field {
   display: grid;
   gap: 0.45rem;
+}
+
+.field--compact {
+  min-width: min(16rem, 100%);
+}
+
+.field--compact select {
+  min-height: 2.85rem;
+  padding-block: 0.65rem;
 }
 
 .field span {

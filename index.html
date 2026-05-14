@@ -61,12 +61,27 @@
           </div>
 
           <div class="hero__links">
+            <label class="field field--compact location-filter">
+              <span>Location</span>
+              <select id="locationFilterSelect" aria-label="Filter aircraft by location">
+                <option value="">All Locations</option>
+                <option value="Honnington">Honnington</option>
+                <option value="Kenley">Kenley</option>
+                <option value="Kirknewton">Kirknewton</option>
+                <option value="Little Rissington">Little Rissington</option>
+                <option value="Predannack">Predannack</option>
+                <option value="Syerston">Syerston</option>
+                <option value="Topcliffe">Topcliffe</option>
+                <option value="Upavon">Upavon</option>
+                <option value="Woodvale">Woodvale</option>
+              </select>
+            </label>
             <button
               id="addAircraftButton"
               class="button button--ghost"
               type="button"
             >
-              Add new aircraft
+              Add/Edit Aircraft
             </button>
           </div>
         </div>
@@ -316,7 +331,7 @@
           <div class="modal-card__top">
             <div>
               <p class="card__eyebrow">Aircraft submission</p>
-              <h2 id="aircraftSubmissionDialogTitle">Add new aircraft to dataset</h2>
+              <h2 id="aircraftSubmissionDialogTitle">Add or edit aircraft details</h2>
             </div>
             <button
               id="aircraftSubmissionCloseButton"
@@ -330,7 +345,8 @@
 
           <div class="modal-view">
             <p class="modal-copy">
-              Complete the form below to submit a new aircraft for inclusion in the dataset.
+              Complete the form below to add a new aircraft or update an existing aircraft's
+              weight or location in the dataset.
             </p>
             <p id="tripettoStatus" class="helper-text" role="status">
               Loading form...

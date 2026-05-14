@@ -76,6 +76,7 @@
             <ul class="help-list">
               <li>Single-passenger mode checks for payload, aircraft all-up mass, ballast, and approach speed.</li>
               <li>Alternative aircraft comparison for the same single-passenger payload.</li>
+              <li>Location filtering for the nine supported airfields.</li>
               <li>Multiple-passenger summary showing each passenger&apos;s ballast possibilities.</li>
               <li>Optional aircraft allocation using aircraft-specific commander and ballast settings.</li>
               <li>Allocation modes for all available aircraft, automatic balancing, or manual assignment.</li>
@@ -91,6 +92,7 @@
               </div>
             </div>
             <ol class="help-steps">
+              <li>If needed, use the location dropdown to show aircraft from one airfield or leave it on <strong>All Locations</strong>.</li>
               <li>Select the <i>desired</i> aircraft.</li>
               <li>Enter the Aircraft Commander weight <u>with</u> parachute.</li>
               <li>Enter the passenger weight <u>with</u> parachute.</li>
@@ -109,7 +111,7 @@
               <li>Set the number of passengers you will be entering.</li>
               <li>Enter each passenger name and weight <u>with</u> parachute.</li>
               <li>
-                If required, enable <strong>Set Aircraft Ballasts</strong>, choose the available
+                If required, use the location dropdown to narrow the aircraft list, then enable <strong>Set Aircraft Ballasts</strong>, choose the available
                 aircraft, then enter each Aircraft Commander name if needed, weight, and ballast setting.
               </li>
               <li>Select the allocation type above the output table.</li>
@@ -129,6 +131,7 @@
               <li>In single-passenger mode, the Aircraft Commander is assumed to be in the rear seat and the passenger in the front seat.</li>
               <li>Single-passenger mode assumes nil carry-on items.</li>
               <li>Passenger and commander weights are expected to include parachutes.</li>
+              <li>The location filter can show all aircraft or only aircraft at Honnington, Kenley, Kirknewton, Little Rissington, Predannack, Syerston, Topcliffe, Upavon, or Woodvale.</li>
               <li>Outputs depend on the aircraft data currently bundled with the app.</li>
             </ul>
           </article>
@@ -154,7 +157,7 @@
               <li>If the aircraft list does not load, refresh the page and try again.</li>
               <li>If PDF export is unavailable, reload the page so the local PDF libraries can load again.</li>
               <li>If a weight or ballast output looks unexpected, check that the entered values include parachutes and that the correct aircraft is selected.</li>
-              <li>If the underlying aircraft data needs updating, use the project source repository to raise an issue or propose a change.</li>
+              <li>If the underlying aircraft data needs adding or updating, use the Add/Edit Aircraft form from the calculator.</li>
               <div class="help-note">For any feedback or suggestions, you can contact Brad Kennedy using this <a href="https://bradleykennedy.co.uk/contact" target="_blank" rel="noreferrer">contact form</a>.</div>
             </ul>
           </article>

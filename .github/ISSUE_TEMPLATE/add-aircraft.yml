@@ -1,6 +1,6 @@
-name: Add aircraft
-description: Submit a new aircraft tail number and weight for the ballast calculator data file.
-title: "Add aircraft: "
+name: Add/edit aircraft
+description: Submit a new aircraft or update an existing aircraft for the ballast calculator data file.
+title: "Add/edit aircraft: "
 labels:
   - aircraft-submission
 body:
@@ -8,7 +8,8 @@ body:
     attributes:
       value: |
         Submit the aircraft details below and the repository automation will prepare a pull request to update `assets/aircraft_weights.csv`.
-        Automatic merge only happens when the email address uses an approved MOD domain, the tail number matches `ZE` followed by three digits, and the weight is between `380` and `500` kg.
+        Use this form to add a new aircraft or update an existing aircraft's weight or location.
+        Automatic merge only happens when the email address uses an approved MOD domain, the tail number matches `ZE` followed by three digits, the location is one of the approved airfields, and the weight is between `380` and `500` kg.
 
   - type: input
     id: aircraft_tail_number
@@ -28,6 +29,24 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: location
+    attributes:
+      label: Location
+      description: Select the aircraft's current airfield.
+      options:
+        - Honnington
+        - Kenley
+        - Kirknewton
+        - Little Rissington
+        - Predannack
+        - Syerston
+        - Topcliffe
+        - Upavon
+        - Woodvale
+    validations:
+      required: true
+
   - type: input
     id: submitter_email
     attributes:
@@ -42,5 +61,5 @@ body:
     attributes:
       label: Confirmation
       options:
-        - label: I have checked the aircraft tail number and weight before submitting.
+        - label: I have checked the aircraft tail number, weight, and location before submitting.
           required: true

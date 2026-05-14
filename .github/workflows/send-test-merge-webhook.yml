@@ -13,6 +13,21 @@ on:
         required: true
         default: "416.25"
         type: string
+      location:
+        description: Aircraft location to include in the sample payload
+        required: true
+        default: Kenley
+        type: choice
+        options:
+          - Honnington
+          - Kenley
+          - Kirknewton
+          - Little Rissington
+          - Predannack
+          - Syerston
+          - Topcliffe
+          - Upavon
+          - Woodvale
       submitter_email:
         description: Submitter email to include in the sample payload
         required: true
@@ -61,6 +76,7 @@ jobs:
           GITHUB_SERVER_URL: ${{ github.server_url }}
           AIRCRAFT: ${{ inputs.aircraft }}
           WEIGHT_KG: ${{ inputs.weight_kg }}
+          LOCATION: ${{ inputs.location }}
           SUBMITTER_EMAIL: ${{ inputs.submitter_email }}
           ISSUE_NUMBER: ${{ inputs.issue_number }}
           PULL_REQUEST_NUMBER: ${{ inputs.pull_request_number }}

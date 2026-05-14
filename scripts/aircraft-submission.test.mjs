@@ -24,6 +24,7 @@ test("process-aircraft-issue adds a valid submission to the CSV", () => {
     issueBody: buildIssueBody({
       aircraft: "ZE123",
       weight: "416.25",
+      location: "Kenley",
       email: "pilot@mod.gov.uk"
     }),
     issueCreatedAt: "2026-04-13T09:15:00.000Z"
@@ -32,10 +33,44 @@ test("process-aircraft-issue adds a valid submission to the CSV", () => {
   assert.deepEqual(result, {
     aircraft: "ZE123",
     weight: "416.25",
+    location: "Kenley",
     submitterEmail: "pilot@mod.gov.uk",
     changeAction: "added"
   });
-  assert.match(fs.readFileSync(csvPath, "utf8"), /2026-04-13T09:15:00\.000Z,ZE123,416\.25/);
+  assert.match(fs.readFileSync(csvPath, "utf8"), /2026-04-13T09:15:00\.000Z,ZE123,416\.25,Kenley,pilot@mod\.gov\.uk/);
+});
+
+test("process-aircraft-issue updates location and submitter email for an existing aircraft", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "ballast-aircraft-"));
+  const csvPath = path.join(tempDir, "aircraft_weights.csv");
+
+  fs.writeFileSync(
+    csvPath,
+    [
+      "Timestamp,aircraft,weight,location,submitterEmail",
+      "2026-04-01T09:00:00.000Z,ZE123,416.25,Kenley,old@mod.gov.uk"
+    ].join("\n"),
+  );
+
+  const result = processAircraftIssue({
+    csvPath,
+    issueBody: buildIssueBody({
+      aircraft: "ZE123",
+      weight: "416.25",
+      location: "Syerston",
+      email: "pilot@mod.gov.uk"
+    }),
+    issueCreatedAt: "2026-04-13T09:15:00.000Z"
+  });
+
+  assert.deepEqual(result, {
+    aircraft: "ZE123",
+    weight: "416.25",
+    location: "Syerston",
+    submitterEmail: "pilot@mod.gov.uk",
+    changeAction: "updated"
+  });
+  assert.match(fs.readFileSync(csvPath, "utf8"), /2026-04-13T09:15:00\.000Z,ZE123,416\.25,Syerston,pilot@mod\.gov\.uk/);
 });
 
 test("submission validation rejects an unapproved email domain", () => {
@@ -74,6 +109,18 @@ test("submission validation rejects a weight outside the allowed range", () => {
   );
 });
 
+test("submission validation rejects an unsupported location", () => {
+  assert.throws(
+    () =>
+      parseAndValidateIssueSubmission(
+        buildIssueBody({
+          location: "Other Airfield"
+        }),
+      ),
+    /Location must be one of/,
+  );
+});
+
 test("pull request verification accepts a matching single-row CSV update", () => {
   const result = validateAircraftPullRequest({
     issueBody: buildIssueBody({
@@ -88,6 +135,7 @@ test("pull request verification accepts a matching single-row CSV update", () =>
       "Change type: `added`",
       "Aircraft: `ZE124`",
       "Weight: `420.5 kg`",
+      "Location: `Predannack`",
       "Submitter email: `pilot@rafac.mod.gov.uk`",
       "",
       "Closes #42"
@@ -95,13 +143,13 @@ test("pull request verification accepts a matching single-row CSV update", () =>
     prHeadRef: "automation/add-aircraft-42",
     changedFiles: ["assets/aircraft_weights.csv"],
     baseCsvText: [
-      "Timestamp,aircraft,weight",
-      "2026-04-01T09:00:00.000Z,ZE123,410"
+      "Timestamp,aircraft,weight,location,submitterEmail",
+      "2026-04-01T09:00:00.000Z,ZE123,410,Kenley,pilot@mod.gov.uk"
     ].join("\n"),
     headCsvContent: [
-      "Timestamp,aircraft,weight",
-      "2026-04-01T09:00:00.000Z,ZE123,410",
-      "2026-04-13T09:15:00.000Z,ZE124,420.5"
+      "Timestamp,aircraft,weight,location,submitterEmail",
+      "2026-04-01T09:00:00.000Z,ZE123,410,Kenley,pilot@mod.gov.uk",
+      "2026-04-13T09:15:00.000Z,ZE124,420.5,Predannack,pilot@rafac.mod.gov.uk"
     ].join("\n")
   });
 
@@ -109,6 +157,7 @@ test("pull request verification accepts a matching single-row CSV update", () =>
     issueNumber: "42",
     aircraft: "ZE124",
     weight: "420.5",
+    location: "Predannack",
     submitterEmail: "pilot@rafac.mod.gov.uk"
   });
 });
@@ -127,13 +176,13 @@ test("pull request verification rejects unrelated CSV changes", () => {
         prHeadRef: "automation/add-aircraft-42",
         changedFiles: ["assets/aircraft_weights.csv"],
         baseCsvText: [
-          "Timestamp,aircraft,weight",
-          "2026-04-01T09:00:00.000Z,ZE123,410"
+          "Timestamp,aircraft,weight,location,submitterEmail",
+          "2026-04-01T09:00:00.000Z,ZE123,410,Kenley,pilot@mod.gov.uk"
         ].join("\n"),
         headCsvContent: [
-          "Timestamp,aircraft,weight",
-          "2026-04-13T09:15:00.000Z,ZE123,411",
-          "2026-04-13T09:15:00.000Z,ZE124,420.5"
+          "Timestamp,aircraft,weight,location,submitterEmail",
+          "2026-04-13T09:15:00.000Z,ZE123,411,Kenley,pilot@mod.gov.uk",
+          "2026-04-13T09:15:00.000Z,ZE124,420.5,Predannack,pilot@rafac.mod.gov.uk"
         ].join("\n")
       }),
     /Pull request must only add or update ZE124/,
@@ -143,6 +192,7 @@ test("pull request verification rejects unrelated CSV changes", () => {
 function buildIssueBody({
   aircraft = "ZE123",
   weight = "416.25",
+  location = "Predannack",
   email = "pilot@rafac.mod.gov.uk",
   confirmed = true
 } = {}) {
@@ -152,6 +202,9 @@ function buildIssueBody({
     "",
     "### Aircraft weight (kg)",
     weight,
+    "",
+    "### Location",
+    location,
     "",
     "### Submitter email",
     email,

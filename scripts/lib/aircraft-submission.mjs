@@ -2,6 +2,17 @@ export const AIRCRAFT_SUBMISSION_LABEL = "aircraft-submission";
 export const AUTOMATION_BRANCH_PREFIX = "automation/add-aircraft-";
 export const AIRCRAFT_CSV_PATH = "assets/aircraft_weights.csv";
 export const ALLOWED_EMAIL_DOMAINS = ["rafac.mod.gov.uk", "mod.gov.uk"];
+export const ALLOWED_LOCATIONS = [
+  "Honnington",
+  "Kenley",
+  "Kirknewton",
+  "Little Rissington",
+  "Predannack",
+  "Syerston",
+  "Topcliffe",
+  "Upavon",
+  "Woodvale"
+];
 export const MIN_AIRCRAFT_WEIGHT_KG = 380;
 export const MAX_AIRCRAFT_WEIGHT_KG = 500;
 
@@ -11,6 +22,7 @@ export function parseAndValidateIssueSubmission(markdown) {
   return {
     aircraft: normaliseAircraft(fields["Aircraft tail number"]),
     weight: normaliseWeight(fields["Aircraft weight (kg)"]),
+    location: normaliseLocation(fields.Location),
     submitterEmail: normaliseEmail(fields["Submitter email"]),
     confirmation: assertConfirmation(fields["Confirmation"])
   };
@@ -81,7 +93,7 @@ export function parseCsv(text) {
 }
 
 export function stringifyCsv(rows) {
-  const headers = ["Timestamp", "aircraft", "weight"];
+  const headers = ["Timestamp", "aircraft", "weight", "location", "submitterEmail"];
   const lines = [headers.join(",")];
 
   rows.forEach((row) => {
@@ -160,7 +172,9 @@ export function indexRowsByAircraft(rows, sourceLabel = "CSV") {
     indexedRows.set(aircraft, {
       Timestamp: String(row.Timestamp || ""),
       aircraft,
-      weight: String(row.weight || "").trim()
+      weight: String(row.weight || "").trim(),
+      location: String(row.location || "").trim(),
+      submitterEmail: String(row.submitterEmail || "").trim()
     });
   });
 
@@ -189,6 +203,23 @@ export function normaliseWeight(value) {
   }
 
   return String(Number(parsed.toFixed(4)));
+}
+
+export function normaliseLocation(value) {
+  const location = String(value || "").trim();
+  const matchedLocation = ALLOWED_LOCATIONS.find(
+    (allowedLocation) => allowedLocation.toLowerCase() === location.toLowerCase()
+  );
+
+  if (!location) {
+    throw new Error("Location is required.");
+  }
+
+  if (!matchedLocation) {
+    throw new Error(`Location must be one of: ${ALLOWED_LOCATIONS.join(", ")}.`);
+  }
+
+  return matchedLocation;
 }
 
 export function canonicaliseWeight(value) {

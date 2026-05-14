@@ -25,7 +25,7 @@ export function main({
   issueBody = process.env.ISSUE_BODY || "",
   issueCreatedAt = process.env.ISSUE_CREATED_AT || new Date().toISOString()
 } = {}) {
-  const { aircraft, weight, submitterEmail } = parseAndValidateIssueSubmission(issueBody);
+  const { aircraft, weight, location, submitterEmail } = parseAndValidateIssueSubmission(issueBody);
 
   const rows = parseCsv(fs.readFileSync(csvPath, "utf8"));
   const timestamp = new Date(issueCreatedAt).toISOString();
@@ -35,14 +35,18 @@ export function main({
 
   if (existingIndex >= 0) {
     const existingWeight = String(Number(canonicaliseWeight(rows[existingIndex].weight).toFixed(4)));
+    const existingLocation = String(rows[existingIndex].location || "").trim();
+    const existingSubmitterEmail = String(rows[existingIndex].submitterEmail || "").trim().toLowerCase();
 
-    if (existingWeight === weight) {
+    if (existingWeight === weight && existingLocation === location && existingSubmitterEmail === submitterEmail) {
       changeAction = "no-change";
     } else {
       rows[existingIndex] = {
         Timestamp: timestamp,
         aircraft,
-        weight
+        weight,
+        location,
+        submitterEmail
       };
       changeAction = "updated";
     }
@@ -50,7 +54,9 @@ export function main({
     rows.push({
       Timestamp: timestamp,
       aircraft,
-      weight
+      weight,
+      location,
+      submitterEmail
     });
   }
 
@@ -64,12 +70,14 @@ export function main({
 
   setOutput("aircraft", aircraft);
   setOutput("weight", weight);
+  setOutput("location", location);
   setOutput("submitter_email", submitterEmail || "Not provided");
   setOutput("change_action", changeAction);
 
   return {
     aircraft,
     weight,
+    location,
     submitterEmail,
     changeAction
   };

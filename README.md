@@ -28,6 +28,7 @@ This app is intended to make routine ballast planning faster, clearer, and easie
 
 - Single-passenger ballast and all-up-mass checks.
 - Alternative aircraft comparison for the same payload.
+- Location filtering for aircraft based at the supported airfields.
 - Front-seat minimum weight and ballast-status outputs.
 - Approach-speed output based on calculated all-up mass.
 - Multi-passenger summary with passenger names, weights, required ballast, permitted ballast, and notes.
@@ -41,11 +42,12 @@ This app is intended to make routine ballast planning faster, clearer, and easie
 ### Single Passenger Mode
 
 1. Open the app and remain on `Single Passenger`.
-2. Select the aircraft tail number.
-3. Enter the Aircraft Commander weight with parachute.
-4. Enter the passenger weight with parachute.
-5. Select how many ballast weights are fitted.
-6. Review the calculations, output checks, and alternative aircraft table.
+2. Optionally filter the aircraft list by location.
+3. Select the aircraft tail number.
+4. Enter the Aircraft Commander weight with parachute.
+5. Enter the passenger weight with parachute.
+6. Select how many ballast weights are fitted.
+7. Review the calculations, output checks, and alternative aircraft table.
 
 Single-passenger mode assumes:
 
@@ -59,7 +61,7 @@ Single-passenger mode assumes:
 2. Enter the number of passengers to be planned for.
 3. Add each passenger name and weight with parachute.
 4. Review the summary table showing required ballast, permitted ballast, and status notes.
-5. If needed, enable `Set Aircraft Ballasts` and choose the aircraft available for allocation.
+5. If needed, filter the aircraft list by location, then enable `Set Aircraft Ballasts` and choose the aircraft available for allocation.
 6. Enter each selected aircraft's commander weight and ballast setting.
 7. Review the aircraft allocation column to see which passengers are allocatable to which configured aircraft.
 8. Use `Download PDF` to export the summary.
@@ -77,13 +79,14 @@ Aircraft records are stored in `assets/aircraft_weights.csv`.
 
 New aircraft entries or updates are intended to be submitted through the repository's GitHub Issue Form:
 
-- Issue form: [Add aircraft](https://github.com/2FTS-RAF/ballast/issues/new?template=add-aircraft.yml)
-- You provide the aircraft tail number, aircraft weight in kilograms, and a submitter email address.
+- Issue form: [Add/edit aircraft](https://github.com/2FTS-RAF/ballast/issues/new?template=add-aircraft.yml)
+- You provide the aircraft tail number, aircraft weight in kilograms, location, and a submitter email address.
 - A GitHub Actions workflow processes the submission.
 - If a change is required, the automation opens a pull request to update `assets/aircraft_weights.csv`.
 - The generated pull request is automatically verified and merged when all of these checks pass:
   - submitter email domain is `rafac.mod.gov.uk` or `mod.gov.uk`
   - aircraft tail number matches `ZE` followed by exactly three digits
+  - location is one of `Honnington`, `Kenley`, `Kirknewton`, `Little Rissington`, `Predannack`, `Syerston`, `Topcliffe`, `Upavon`, or `Woodvale`
   - aircraft weight is numeric and between `380` and `500` kg
 - If the submitted data already matches the CSV, the issue is commented and no pull request is created.
 - After a successful automatic merge, the workflow explicitly closes the linked issue and sends a POST webhook with the merge details.
@@ -92,8 +95,8 @@ New aircraft entries or updates are intended to be submitted through the reposit
 
 The repository currently uses a structured issue process rather than open blank issues.
 
-- For aircraft data additions or corrections, use the [Add aircraft issue form](https://github.com/2FTS-RAF/ballast/issues/new?template=add-aircraft.yml).
-- Check the tail number and weight carefully before submitting.
+- For aircraft data additions or corrections, use the [Add/edit aircraft issue form](https://github.com/2FTS-RAF/ballast/issues/new?template=add-aircraft.yml).
+- Check the tail number, weight, and location carefully before submitting.
 - If the workflow cannot process the submission automatically, GitHub will comment on the issue with the reason.
 - For questions, feedback, or matters that are not aircraft data submissions, use the developer contact route below.
 

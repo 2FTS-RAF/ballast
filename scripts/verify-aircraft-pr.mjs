@@ -37,6 +37,7 @@ export function main({
   setOutput("issue_number", result.issueNumber);
   setOutput("aircraft", result.aircraft);
   setOutput("weight", result.weight);
+  setOutput("location", result.location);
   setOutput("submitter_email", result.submitterEmail);
 
   return result;
@@ -72,13 +73,15 @@ export function validateAircraftPullRequest({
     throw new Error(`Pull request must only change \`${csvPath}\`.`);
   }
 
-  const { aircraft, weight, submitterEmail } = parseAndValidateIssueSubmission(issueBody);
+  const { aircraft, weight, location, submitterEmail } = parseAndValidateIssueSubmission(issueBody);
 
   validateCsvChange({
     aircraft,
     baseCsvText,
     csvPath,
     headCsvText: headCsvContent,
+    location,
+    submitterEmail,
     weight
   });
 
@@ -86,6 +89,7 @@ export function validateAircraftPullRequest({
     issueNumber: String(issueNumber),
     aircraft,
     weight,
+    location,
     submitterEmail
   };
 }
@@ -95,6 +99,8 @@ function validateCsvChange({
   baseCsvText,
   csvPath,
   headCsvText,
+  location,
+  submitterEmail,
   weight
 }) {
   const baseRows = parseCsv(baseCsvText);
@@ -123,6 +129,14 @@ function validateCsvChange({
   if (updatedRow.weight !== weight) {
     throw new Error(`Pull request row for ${aircraft} must set the weight to ${weight} kg.`);
   }
+
+  if (updatedRow.location !== location) {
+    throw new Error(`Pull request row for ${aircraft} must set the location to ${location}.`);
+  }
+
+  if (updatedRow.submitterEmail !== submitterEmail) {
+    throw new Error(`Pull request row for ${aircraft} must set the submitter email to ${submitterEmail}.`);
+  }
 }
 
 function rowsEqual(left, right) {
@@ -134,7 +148,11 @@ function rowsEqual(left, right) {
     return false;
   }
 
-  return left.Timestamp === right.Timestamp && left.aircraft === right.aircraft && left.weight === right.weight;
+  return left.Timestamp === right.Timestamp
+    && left.aircraft === right.aircraft
+    && left.weight === right.weight
+    && left.location === right.location
+    && left.submitterEmail === right.submitterEmail;
 }
 
 function loadContext(contextPath) {
