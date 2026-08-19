@@ -288,8 +288,10 @@ a {
   outline: none;
 }
 
-.tripetto-shell {
-  min-height: 32rem;
+.submission-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
 }
 
 main {

@@ -215,34 +215,40 @@ jobs:
             });
             return response.data.sha;
 
-      - name: Close linked issue
+      - name: Confirm and close linked issue
         uses: actions/github-script@v9
         env:
+          AIRCRAFT: ${{ steps.verify_pr.outputs.aircraft }}
+          WEIGHT: ${{ steps.verify_pr.outputs.weight }}
+          LOCATION: ${{ steps.verify_pr.outputs.location }}
           ISSUE_NUMBER: ${{ steps.verify_pr.outputs.issue_number }}
           PULL_REQUEST_NUMBER: ${{ steps.gather_pr.outputs.pull_request_number }}
+          MERGE_COMMIT_SHA: ${{ steps.merge_pr.outputs.result }}
         with:
           script: |
+            const issue_number = Number(process.env.ISSUE_NUMBER);
+            const pullRequestNumber = Number(process.env.PULL_REQUEST_NUMBER);
+            const mergeSha = process.env.MERGE_COMMIT_SHA;
+            const shortSha = mergeSha.slice(0, 7);
+
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number,
+              body: [
+                `Aircraft data update confirmed for \`${process.env.AIRCRAFT}\`.`,
+                '',
+                `Weight: \`${process.env.WEIGHT} kg\``,
+                `Location: \`${process.env.LOCATION}\``,
+                `Pull request: #${pullRequestNumber}`,
+                `Merge commit: ${context.payload.repository.html_url}/commit/${mergeSha} (${shortSha})`,
+                '',
+                'The updated aircraft data will be available in the app after GitHub Pages finishes publishing the merged change.',
+              ].join('\n'),
+            });
+
             await github.rest.issues.update({
               ...context.repo,
-              issue_number: Number(process.env.ISSUE_NUMBER),
+              issue_number,
               state: 'closed',
               state_reason: 'completed',
             });
-
-      - name: Send merge webhook
-        run: node scripts/send-merge-webhook.mjs
-        env:
-          WEBHOOK_URL: ${{ secrets.MERGE_SUCCESS_WEBHOOK_URL }}
-          WEBHOOK_API_KEY: ${{ secrets.MERGE_SUCCESS_WEBHOOK_API_KEY }}
-          WEBHOOK_EVENT: aircraft_submission_merged
-          REPOSITORY_NAME: ${{ github.event.repository.name }}
-          REPOSITORY_FULL_NAME: ${{ github.repository }}
-          GITHUB_SERVER_URL: ${{ github.server_url }}
-          AIRCRAFT: ${{ steps.verify_pr.outputs.aircraft }}
-          WEIGHT_KG: ${{ steps.verify_pr.outputs.weight }}
-          LOCATION: ${{ steps.verify_pr.outputs.location }}
-          SUBMITTER_EMAIL: ${{ steps.verify_pr.outputs.submitter_email }}
-          ISSUE_NUMBER: ${{ steps.verify_pr.outputs.issue_number }}
-          PULL_REQUEST_NUMBER: ${{ steps.gather_pr.outputs.pull_request_number }}
-          PULL_REQUEST_URL: ${{ steps.gather_pr.outputs.pull_request_url }}
-          MERGE_COMMIT_SHA: ${{ steps.merge_pr.outputs.result }}

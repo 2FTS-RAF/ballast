@@ -14,12 +14,6 @@
     belowThreshold: 55,
     thresholdOrAbove: 60
   };
-  const TRIPETTO_SCRIPT_URLS = [
-    "https://cdn.jsdelivr.net/npm/@tripetto/runner",
-    "https://cdn.jsdelivr.net/npm/@tripetto/runner-classic",
-    "https://cdn.jsdelivr.net/npm/@tripetto/studio"
-  ];
-  const TRIPETTO_FORM_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiTFQ1V2JpNWZ3b0t2VkxMZWJqZ0dBVlZJMXY5K2MrazI0N3d5VjNRK2t6WT0iLCJkZWZpbml0aW9uIjoiK2V1cDBzVUhwOHpQUHhsOGlzTmxxVk5EVGtwZUh4S3pjenM0UEwvcDJhWT0iLCJ0eXBlIjoiY29sbGVjdCJ9.W16S1Nbg-kifLN4lm86MnbgZJmcluvEUYAJBfGdglrw";
   const AIRCRAFT_LOCATIONS = [
     "Honington",
     "Kenley",
@@ -233,8 +227,6 @@
 
   const elements = {};
   let lastFocusedElement = null;
-  let tripettoAssetsPromise = null;
-  let tripettoFormPromise = null;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
@@ -295,7 +287,6 @@
     elements.aircraftSubmissionModal = document.getElementById("aircraftSubmissionModal");
     elements.aircraftSubmissionCard = document.getElementById("aircraftSubmissionCard");
     elements.aircraftSubmissionCloseButton = document.getElementById("aircraftSubmissionCloseButton");
-    elements.tripettoStatus = document.getElementById("tripettoStatus");
     elements.homeScreenPrompt = document.getElementById("homeScreenPrompt");
     elements.homeScreenPromptDismiss = document.getElementById("homeScreenPromptDismiss");
   }
@@ -481,17 +472,6 @@
     elements.aircraftSubmissionModal.classList.add("is-active");
     document.body.classList.add("is-modal-open");
     elements.aircraftSubmissionCloseButton.focus();
-    elements.tripettoStatus.hidden = false;
-    elements.tripettoStatus.textContent = "Loading form...";
-
-    ensureTripettoForm()
-      .then(() => {
-        elements.tripettoStatus.hidden = true;
-      })
-      .catch((error) => {
-        elements.tripettoStatus.hidden = false;
-        elements.tripettoStatus.textContent = `${error.message} Please try again later.`;
-      });
   }
 
   function closeAircraftSubmissionModal() {
@@ -572,72 +552,6 @@
     if (event.key === "Escape" && elements.aircraftSubmissionModal.classList.contains("is-active")) {
       closeAircraftSubmissionModal();
     }
-  }
-
-  async function ensureTripettoForm() {
-    if (!tripettoFormPromise) {
-      tripettoFormPromise = loadTripettoAssets()
-        .then(() => {
-          if (!global.TripettoClassic || !global.TripettoStudio || typeof global.TripettoStudio.form !== "function") {
-            throw new Error("The manual review form could not be loaded.");
-          }
-
-          global.TripettoStudio.form({
-            runner: global.TripettoClassic,
-            token: TRIPETTO_FORM_TOKEN,
-            element: "tripetto-19a4onr"
-          });
-        })
-        .catch((error) => {
-          tripettoFormPromise = null;
-          throw error;
-        });
-    }
-
-    return tripettoFormPromise;
-  }
-
-  function loadTripettoAssets() {
-    if (!tripettoAssetsPromise) {
-      tripettoAssetsPromise = TRIPETTO_SCRIPT_URLS.reduce((promise, source) => {
-        return promise.then(() => loadExternalScript(source));
-      }, Promise.resolve()).catch((error) => {
-        tripettoAssetsPromise = null;
-        throw error;
-      });
-    }
-
-    return tripettoAssetsPromise;
-  }
-
-  function loadExternalScript(source) {
-    return new Promise((resolve, reject) => {
-      const existing = document.querySelector(`script[src="${source}"]`);
-
-      if (existing) {
-        if (existing.dataset.loaded === "true") {
-          resolve();
-          return;
-        }
-
-        existing.addEventListener("load", () => {
-          existing.dataset.loaded = "true";
-          resolve();
-        }, { once: true });
-        existing.addEventListener("error", () => reject(new Error("The manual review form could not be loaded.")), { once: true });
-        return;
-      }
-
-      const script = document.createElement("script");
-      script.src = source;
-      script.async = true;
-      script.addEventListener("load", () => {
-        script.dataset.loaded = "true";
-        resolve();
-      }, { once: true });
-      script.addEventListener("error", () => reject(new Error("The manual review form could not be loaded.")), { once: true });
-      document.head.appendChild(script);
-    });
   }
 
   function renderSingleAircraftOptions() {

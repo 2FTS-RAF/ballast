@@ -345,13 +345,27 @@
 
           <div class="modal-view">
             <p class="modal-copy">
-              Complete the form below to add a new aircraft or update an existing aircraft's
+              Use the repository form to add a new aircraft or update an existing aircraft's
               weight or location in the dataset.
             </p>
-            <p id="tripettoStatus" class="helper-text" role="status">
-              Loading form...
+            <p class="modal-copy">
+              GitHub will prepare and verify the aircraft data update automatically. When the
+              update is merged, the submission issue is closed with a confirmation comment.
             </p>
-            <div id="tripetto-19a4onr" class="tripetto-shell"></div>
+            <div class="submission-actions">
+              <a
+                class="button button--primary"
+                href="https://github.com/2FTS-RAF/ballast/issues/new?template=add-aircraft.yml"
+                target="_blank"
+                rel="noopener"
+              >
+                Open Aircraft Form
+              </a>
+            </div>
+            <p class="helper-text">
+              A GitHub account is required so the automation can attach the request, review
+              comments, and completion notice to the submitter.
+            </p>
           </div>
         </div>
       </div>
